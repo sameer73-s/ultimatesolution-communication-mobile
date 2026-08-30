@@ -3,6 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ultimate_solution_mobile/core/errors/failures.dart';
 import 'package:ultimate_solution_mobile/features/auth/domain/entities/auth_session.dart';
 import 'package:ultimate_solution_mobile/features/auth/domain/repositories/auth_repository.dart';
+import 'package:ultimate_solution_mobile/features/auth/domain/usecases/login_use_case.dart';
+import 'package:ultimate_solution_mobile/features/auth/domain/usecases/logout_use_case.dart';
+import 'package:ultimate_solution_mobile/features/auth/domain/usecases/refresh_session_use_case.dart';
+import 'package:ultimate_solution_mobile/features/auth/domain/usecases/register_use_case.dart';
 import 'package:ultimate_solution_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 
 void main() {
@@ -14,7 +18,13 @@ void main() {
   );
 
   test('emits authenticated after successful login', () async {
-    final bloc = AuthBloc(_FakeAuthRepository(session: session));
+    final repository = _FakeAuthRepository(session: session);
+    final bloc = AuthBloc(
+      LoginUseCase(repository),
+      RegisterUseCase(repository),
+      RefreshSessionUseCase(repository),
+      LogoutUseCase(repository),
+    );
     addTearDown(bloc.close);
 
     final states = <AuthState>[];
@@ -33,7 +43,13 @@ void main() {
   });
 
   test('emits unauthenticated failure when refresh has no session', () async {
-    final bloc = AuthBloc(_FakeAuthRepository());
+    final repository = _FakeAuthRepository();
+    final bloc = AuthBloc(
+      LoginUseCase(repository),
+      RegisterUseCase(repository),
+      RefreshSessionUseCase(repository),
+      LogoutUseCase(repository),
+    );
     addTearDown(bloc.close);
 
     final states = <AuthState>[];

@@ -2,7 +2,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/auth_session.dart';
-import '../../domain/repositories/auth_repository.dart';
+import '../../domain/usecases/login_use_case.dart';
+import '../../domain/usecases/logout_use_case.dart';
+import '../../domain/usecases/refresh_session_use_case.dart';
+import '../../domain/usecases/register_use_case.dart';
 
 sealed class AuthEvent {
   const AuthEvent();
@@ -60,21 +63,22 @@ final class AuthUnauthenticated extends AuthState {
 }
 
 final class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc(this._repository) : super(const AuthInitial()) {
+  AuthBloc(this._login, this._register, this._refresh, this._logout)
+    : super(const AuthInitial()) {
     on<LoginSubmitted>(_onLogin);
     on<RegisterSubmitted>(_onRegister);
     on<RefreshRequested>(_onRefresh);
     on<LogoutRequested>(_onLogout);
   }
 
-  final AuthRepository _repository;
+  final LoginUseCase _login;
+  final RegisterUseCase _register;
+  final RefreshSessionUseCase _refresh;
+  final LogoutUseCase _logout;
 
   Future<void> _onLogin(LoginSubmitted event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
-    final result = await _repository.login(
-      email: event.email,
-      password: event.password,
-    );
+    final result = await _login(email: event.email, password: event.password);
     _emitResult(result, emit);
   }
 
@@ -83,7 +87,7 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    final result = await _repository.register(
+    final result = await _register(
       email: event.email,
       password: event.password,
       displayName: event.displayName,
@@ -96,12 +100,12 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    final result = await _repository.refresh();
+    final result = await _refresh();
     _emitResult(result, emit);
   }
 
   Future<void> _onLogout(LogoutRequested event, Emitter<AuthState> emit) async {
-    await _repository.logout();
+    await _logout();
     emit(const AuthUnauthenticated());
   }
 
