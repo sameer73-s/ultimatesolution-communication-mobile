@@ -8,6 +8,9 @@ abstract interface class AccessTokenStore {
   Future<void> clear();
 }
 
+/// Temporary in-memory storage for development and tests only.
+/// Feature 4.2 must replace this with durable secure storage, such as
+/// `flutter_secure_storage`, before any production use.
 final class InMemoryAccessTokenStore implements AccessTokenStore {
   String? _token;
 
