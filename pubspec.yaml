@@ -39,6 +39,7 @@ dependencies:
   go_router: ^18.0.0
   flutter_bloc: ^9.1.1
   flutter_secure_storage: ^11.0.0
+  signalr_netcore: ^1.4.4
 
 dev_dependencies:
   flutter_test:
