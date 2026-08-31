@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../../core/errors/failures.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/entities/auth_session.dart';
@@ -59,10 +61,17 @@ final class AuthRepositoryImpl implements AuthRepository {
       await _tokenStore.writeRefresh(model.refreshToken);
       return (session: model.toEntity(), failure: null);
     } catch (error) {
-      return (
-        session: null,
-        failure: error is Failure ? error : const UnknownFailure(),
-      );
+      return (session: null, failure: _mapCaughtError(error));
     }
+  }
+
+  Failure _mapCaughtError(Object error) {
+    if (error is Failure) {
+      return error;
+    }
+    if (error is DioException && error.error is Failure) {
+      return error.error! as Failure;
+    }
+    return const UnknownFailure();
   }
 }
