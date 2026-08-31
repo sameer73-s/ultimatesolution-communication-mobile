@@ -1,0 +1,28 @@
+﻿00:00 +0: loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart
+00:00 +0: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_bloc_test.dart: emits authenticated after successful login
+00:00 +1: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart: GoRouter resolves /login without a GoException
+00:00 +2: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart: GoRouter resolves /login without a GoException
+00:00 +3: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart: GoRouter resolves /register without a GoException
+00:00 +4: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart: GoRouter resolves /channels without a GoException
+00:00 +5: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart: GoRouter resolves /channels/:channelId without a GoException
+00:00 +6: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart: unregistered locations still surface as match errors
+00:00 +7: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart: persists access and refresh tokens and refreshes after repository recreation
+00:00 +8: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart: surfaces Failure embedded in DioException.error instead of UnknownFailure
+00:00 +9: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart: surfaces ApiFailure from DioException.error with backend message
+00:00 +10: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart: LoginUseCase delegates credentials to AuthRepository
+00:00 +11: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart: RegisterUseCase delegates registration data to AuthRepository
+00:00 +12: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart: RefreshSessionUseCase delegates refresh to AuthRepository
+00:00 +13: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart: LogoutUseCase delegates logout to AuthRepository
+00:00 +14: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart: ChannelsBloc emits loaded channels after successful fetch
+00:00 +15: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart: ChatConversationBloc loads messages and merges send result
+00:00 +16: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart: ChatConversationBloc appends realtime messageCreated events
+00:00 +17: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart: maps channel list models to entities
+00:00 +18: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart: surfaces Failure embedded in DioException.error instead of UnknownFailure
+00:00 +19: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart: sendMessage returns created message entity
+00:00 +20: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart: GetChannelsUseCase delegates to ChatRepository only
+00:00 +21: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart: GetMessagesUseCase passes channelId and pagination args
+00:00 +22: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart: SendMessageUseCase delegates body to ChatRepository
+00:00 +23: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart: registers ApiClient and Dio through get_it
+00:00 +24: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart: attaches a bearer token through the network interceptor
+00:01 +25: D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart: exposes the placeholder theme centrally
+00:01 +26: All tests passed!
