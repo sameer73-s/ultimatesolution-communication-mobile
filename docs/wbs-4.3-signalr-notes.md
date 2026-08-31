@@ -11,9 +11,8 @@
 
 ## Live hub verification
 
-- **Not manually verified** against the Render-hosted `/hubs/chat` endpoint in this task.
-- Coverage in this PR:
-  - Unit/bloc tests with fakes for REST + realtime streams.
-  - Router resolution tests for `/channels` and `/channels/:channelId`.
-  - `flutter analyze` + `flutter test` locally.
-- Backend already has integration coverage for ChatHub negotiation and live Long Polling events in `ChatAndPresenceEndpointsTests`.
+- **Passed** against Render on 2026-08-31.
+- Target: `https://ultimatesolution-communication-backend.onrender.com/hubs/chat`
+- Listener: `test@example.com`; peer sender temporary account; event `messageCreated` received in ~496ms after peer REST send.
+- Details and raw console: `docs/review/test-results-summary.md` → section **Live Hub Verification**.
+- Opt-in re-run: `flutter test test/live_hub_verify_test.dart --dart-define=LIVE_HUB=true --dart-define=API_BASE_URL=https://ultimatesolution-communication-backend.onrender.com`
