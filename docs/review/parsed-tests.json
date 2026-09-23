@@ -1,0 +1,184 @@
+﻿[
+    {
+        "FullName":  "auth_bloc_test · emits authenticated after successful login",
+        "Result":  "Passed",
+        "TimeMs":  35,
+        "Suite":  "auth_bloc_test",
+        "Name":  "emits authenticated after successful login"
+    },
+    {
+        "FullName":  "app_router_test · GoRouter resolves /login without a GoException",
+        "Result":  "Passed",
+        "TimeMs":  35,
+        "Suite":  "app_router_test",
+        "Name":  "GoRouter resolves /login without a GoException"
+    },
+    {
+        "FullName":  "auth_bloc_test · emits unauthenticated failure when refresh has no session",
+        "Result":  "Passed",
+        "TimeMs":  5,
+        "Suite":  "auth_bloc_test",
+        "Name":  "emits unauthenticated failure when refresh has no session"
+    },
+    {
+        "FullName":  "app_router_test · GoRouter resolves /register without a GoException",
+        "Result":  "Passed",
+        "TimeMs":  9,
+        "Suite":  "app_router_test",
+        "Name":  "GoRouter resolves /register without a GoException"
+    },
+    {
+        "FullName":  "app_router_test · GoRouter resolves /channels without a GoException",
+        "Result":  "Passed",
+        "TimeMs":  3,
+        "Suite":  "app_router_test",
+        "Name":  "GoRouter resolves /channels without a GoException"
+    },
+    {
+        "FullName":  "app_router_test · GoRouter resolves /channels/:channelId without a GoException",
+        "Result":  "Passed",
+        "TimeMs":  3,
+        "Suite":  "app_router_test",
+        "Name":  "GoRouter resolves /channels/:channelId without a GoException"
+    },
+    {
+        "FullName":  "app_router_test · unregistered locations still surface as match errors",
+        "Result":  "Passed",
+        "TimeMs":  3,
+        "Suite":  "app_router_test",
+        "Name":  "unregistered locations still surface as match errors"
+    },
+    {
+        "FullName":  "auth_repository_test · persists access and refresh tokens and refreshes after repository recreation",
+        "Result":  "Passed",
+        "TimeMs":  21,
+        "Suite":  "auth_repository_test",
+        "Name":  "persists access and refresh tokens and refreshes after repository recreation"
+    },
+    {
+        "FullName":  "auth_repository_test · surfaces Failure embedded in DioException.error instead of UnknownFailure",
+        "Result":  "Passed",
+        "TimeMs":  11,
+        "Suite":  "auth_repository_test",
+        "Name":  "surfaces Failure embedded in DioException.error instead of UnknownFailure"
+    },
+    {
+        "FullName":  "auth_repository_test · surfaces ApiFailure from DioException.error with backend message",
+        "Result":  "Passed",
+        "TimeMs":  4,
+        "Suite":  "auth_repository_test",
+        "Name":  "surfaces ApiFailure from DioException.error with backend message"
+    },
+    {
+        "FullName":  "auth_usecases_test · LoginUseCase delegates credentials to AuthRepository",
+        "Result":  "Passed",
+        "TimeMs":  20,
+        "Suite":  "auth_usecases_test",
+        "Name":  "LoginUseCase delegates credentials to AuthRepository"
+    },
+    {
+        "FullName":  "auth_usecases_test · RegisterUseCase delegates registration data to AuthRepository",
+        "Result":  "Passed",
+        "TimeMs":  5,
+        "Suite":  "auth_usecases_test",
+        "Name":  "RegisterUseCase delegates registration data to AuthRepository"
+    },
+    {
+        "FullName":  "auth_usecases_test · RefreshSessionUseCase delegates refresh to AuthRepository",
+        "Result":  "Passed",
+        "TimeMs":  4,
+        "Suite":  "auth_usecases_test",
+        "Name":  "RefreshSessionUseCase delegates refresh to AuthRepository"
+    },
+    {
+        "FullName":  "auth_usecases_test · LogoutUseCase delegates logout to AuthRepository",
+        "Result":  "Passed",
+        "TimeMs":  3,
+        "Suite":  "auth_usecases_test",
+        "Name":  "LogoutUseCase delegates logout to AuthRepository"
+    },
+    {
+        "FullName":  "chat_bloc_test · ChannelsBloc emits loaded channels after successful fetch",
+        "Result":  "Passed",
+        "TimeMs":  29,
+        "Suite":  "chat_bloc_test",
+        "Name":  "ChannelsBloc emits loaded channels after successful fetch"
+    },
+    {
+        "FullName":  "chat_bloc_test · ChatConversationBloc loads messages and merges send result",
+        "Result":  "Passed",
+        "TimeMs":  10,
+        "Suite":  "chat_bloc_test",
+        "Name":  "ChatConversationBloc loads messages and merges send result"
+    },
+    {
+        "FullName":  "chat_bloc_test · ChatConversationBloc appends realtime messageCreated events",
+        "Result":  "Passed",
+        "TimeMs":  5,
+        "Suite":  "chat_bloc_test",
+        "Name":  "ChatConversationBloc appends realtime messageCreated events"
+    },
+    {
+        "FullName":  "chat_repository_test · maps channel list models to entities",
+        "Result":  "Passed",
+        "TimeMs":  17,
+        "Suite":  "chat_repository_test",
+        "Name":  "maps channel list models to entities"
+    },
+    {
+        "FullName":  "chat_repository_test · surfaces Failure embedded in DioException.error instead of UnknownFailure",
+        "Result":  "Passed",
+        "TimeMs":  7,
+        "Suite":  "chat_repository_test",
+        "Name":  "surfaces Failure embedded in DioException.error instead of UnknownFailure"
+    },
+    {
+        "FullName":  "chat_repository_test · sendMessage returns created message entity",
+        "Result":  "Passed",
+        "TimeMs":  4,
+        "Suite":  "chat_repository_test",
+        "Name":  "sendMessage returns created message entity"
+    },
+    {
+        "FullName":  "chat_usecases_test · GetChannelsUseCase delegates to ChatRepository only",
+        "Result":  "Passed",
+        "TimeMs":  13,
+        "Suite":  "chat_usecases_test",
+        "Name":  "GetChannelsUseCase delegates to ChatRepository only"
+    },
+    {
+        "FullName":  "chat_usecases_test · GetMessagesUseCase passes channelId and pagination args",
+        "Result":  "Passed",
+        "TimeMs":  3,
+        "Suite":  "chat_usecases_test",
+        "Name":  "GetMessagesUseCase passes channelId and pagination args"
+    },
+    {
+        "FullName":  "chat_usecases_test · SendMessageUseCase delegates body to ChatRepository",
+        "Result":  "Passed",
+        "TimeMs":  3,
+        "Suite":  "chat_usecases_test",
+        "Name":  "SendMessageUseCase delegates body to ChatRepository"
+    },
+    {
+        "FullName":  "core_setup_test · registers ApiClient and Dio through get_it",
+        "Result":  "Passed",
+        "TimeMs":  34,
+        "Suite":  "core_setup_test",
+        "Name":  "registers ApiClient and Dio through get_it"
+    },
+    {
+        "FullName":  "core_setup_test · attaches a bearer token through the network interceptor",
+        "Result":  "Passed",
+        "TimeMs":  25,
+        "Suite":  "core_setup_test",
+        "Name":  "attaches a bearer token through the network interceptor"
+    },
+    {
+        "FullName":  "core_setup_test · exposes the placeholder theme centrally",
+        "Result":  "Passed",
+        "TimeMs":  411,
+        "Suite":  "core_setup_test",
+        "Name":  "exposes the placeholder theme centrally"
+    }
+]
