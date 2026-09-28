@@ -1,0 +1,3264 @@
+diff --git a/docs/review/flutter-analyze-4.3.txt b/docs/review/flutter-analyze-4.3.txt
+new file mode 100644
+index 0000000..29b4671
+Binary files /dev/null and b/docs/review/flutter-analyze-4.3.txt differ
+diff --git a/docs/review/flutter-test-4.3.txt b/docs/review/flutter-test-4.3.txt
+new file mode 100644
+index 0000000..5ffb0e5
+Binary files /dev/null and b/docs/review/flutter-test-4.3.txt differ
+diff --git a/docs/review/live-hub-verify-console.txt b/docs/review/live-hub-verify-console.txt
+new file mode 100644
+index 0000000..30eed99
+Binary files /dev/null and b/docs/review/live-hub-verify-console.txt differ
+diff --git a/docs/review/test-results-summary.md b/docs/review/test-results-summary.md
+new file mode 100644
+index 0000000..0f6b46d
+Binary files /dev/null and b/docs/review/test-results-summary.md differ
+diff --git a/docs/wbs-4.3-signalr-notes.md b/docs/wbs-4.3-signalr-notes.md
+new file mode 100644
+index 0000000..3b72dd0
+--- /dev/null
++++ b/docs/wbs-4.3-signalr-notes.md
+@@ -0,0 +1,18 @@
++# WBS 4.3 — Flutter Chat / SignalR notes
++
++## SignalR package choice
++
++- Package: `signalr_netcore` `^1.4.4`
++- Why:
++  - Dart 3 compatible (`sdk: >=2.12.0 <4.0.0`) and resolves cleanly with this app’s Flutter SDK (`^3.13.2`).
++  - Actively maintained relative to `signalr_core` (community guidance recommends migrating away from `signalr_core` when dependency conflicts appear).
++  - Supports ASP.NET Core Hub protocol, `accessTokenFactory` for JWT (same token source as `ApiClient` / `SecureAccessTokenStore`), and automatic reconnect.
++  - Matches backend hub path `/hubs/chat` and event names from WBS 3.3 (`messageCreated`, `typingChanged`, `presenceChanged`, plus `messageUpdated` / `messageDeleted`).
++
++## Live hub verification
++
++- **Passed** against Render on 2026-08-31.
++- Target: `https://ultimatesolution-communication-backend.onrender.com/hubs/chat`
++- Listener: `test@example.com`; peer sender temporary account; event `messageCreated` received in ~496ms after peer REST send.
++- Details and raw console: `docs/review/test-results-summary.md` → section **Live Hub Verification**.
++- Opt-in re-run: `flutter test test/live_hub_verify_test.dart --dart-define=LIVE_HUB=true --dart-define=API_BASE_URL=https://ultimatesolution-communication-backend.onrender.com`
+\ No newline at end of file
+diff --git a/lib/core/di/injection_container.dart b/lib/core/di/injection_container.dart
+index 8758f7b..d479e28 100644
+--- a/lib/core/di/injection_container.dart
++++ b/lib/core/di/injection_container.dart
+@@ -10,6 +10,24 @@ import '../../features/auth/domain/usecases/logout_use_case.dart';
+ import '../../features/auth/domain/usecases/refresh_session_use_case.dart';
+ import '../../features/auth/domain/usecases/register_use_case.dart';
+ import '../../features/auth/presentation/bloc/auth_bloc.dart';
++import '../../features/chat/data/datasources/chat_realtime_data_source.dart';
++import '../../features/chat/data/datasources/chat_remote_data_source.dart';
++import '../../features/chat/data/repositories/chat_realtime_repository_impl.dart';
++import '../../features/chat/data/repositories/chat_repository_impl.dart';
++import '../../features/chat/domain/repositories/chat_realtime_repository.dart';
++import '../../features/chat/domain/repositories/chat_repository.dart';
++import '../../features/chat/domain/usecases/add_channel_member_use_case.dart';
++import '../../features/chat/domain/usecases/create_channel_use_case.dart';
++import '../../features/chat/domain/usecases/delete_message_use_case.dart';
++import '../../features/chat/domain/usecases/edit_message_use_case.dart';
++import '../../features/chat/domain/usecases/get_channel_use_case.dart';
++import '../../features/chat/domain/usecases/get_channels_use_case.dart';
++import '../../features/chat/domain/usecases/get_messages_use_case.dart';
++import '../../features/chat/domain/usecases/mark_message_read_use_case.dart';
++import '../../features/chat/domain/usecases/remove_channel_member_use_case.dart';
++import '../../features/chat/domain/usecases/send_message_use_case.dart';
++import '../../features/chat/presentation/bloc/channels_bloc.dart';
++import '../../features/chat/presentation/bloc/chat_conversation_bloc.dart';
+ 
+ final GetIt serviceLocator = GetIt.instance;
+ 
+@@ -72,4 +90,93 @@ Future<void> configureDependencies() async {
+       ),
+     );
+   }
++
++  if (!serviceLocator.isRegistered<ChatRemoteDataSource>()) {
++    serviceLocator.registerLazySingleton<ChatRemoteDataSource>(
++      () => DioChatRemoteDataSource(serviceLocator<ApiClient>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<ChatRealtimeDataSource>()) {
++    serviceLocator.registerLazySingleton<ChatRealtimeDataSource>(
++      () => SignalRChatRealtimeDataSource(
++        tokenStore: serviceLocator<AccessTokenStore>(),
++      ),
++    );
++  }
++  if (!serviceLocator.isRegistered<ChatRepository>()) {
++    serviceLocator.registerLazySingleton<ChatRepository>(
++      () => ChatRepositoryImpl(serviceLocator<ChatRemoteDataSource>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<ChatRealtimeRepository>()) {
++    serviceLocator.registerLazySingleton<ChatRealtimeRepository>(
++      () => ChatRealtimeRepositoryImpl(
++        serviceLocator<ChatRealtimeDataSource>(),
++      ),
++    );
++  }
++  if (!serviceLocator.isRegistered<GetChannelsUseCase>()) {
++    serviceLocator.registerLazySingleton<GetChannelsUseCase>(
++      () => GetChannelsUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<GetChannelUseCase>()) {
++    serviceLocator.registerLazySingleton<GetChannelUseCase>(
++      () => GetChannelUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<CreateChannelUseCase>()) {
++    serviceLocator.registerLazySingleton<CreateChannelUseCase>(
++      () => CreateChannelUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<GetMessagesUseCase>()) {
++    serviceLocator.registerLazySingleton<GetMessagesUseCase>(
++      () => GetMessagesUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<SendMessageUseCase>()) {
++    serviceLocator.registerLazySingleton<SendMessageUseCase>(
++      () => SendMessageUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<EditMessageUseCase>()) {
++    serviceLocator.registerLazySingleton<EditMessageUseCase>(
++      () => EditMessageUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<DeleteMessageUseCase>()) {
++    serviceLocator.registerLazySingleton<DeleteMessageUseCase>(
++      () => DeleteMessageUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<MarkMessageReadUseCase>()) {
++    serviceLocator.registerLazySingleton<MarkMessageReadUseCase>(
++      () => MarkMessageReadUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<AddChannelMemberUseCase>()) {
++    serviceLocator.registerLazySingleton<AddChannelMemberUseCase>(
++      () => AddChannelMemberUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<RemoveChannelMemberUseCase>()) {
++    serviceLocator.registerLazySingleton<RemoveChannelMemberUseCase>(
++      () => RemoveChannelMemberUseCase(serviceLocator<ChatRepository>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<ChannelsBloc>()) {
++    serviceLocator.registerFactory<ChannelsBloc>(
++      () => ChannelsBloc(serviceLocator<GetChannelsUseCase>()),
++    );
++  }
++  if (!serviceLocator.isRegistered<ChatConversationBloc>()) {
++    serviceLocator.registerFactory<ChatConversationBloc>(
++      () => ChatConversationBloc(
++        serviceLocator<GetMessagesUseCase>(),
++        serviceLocator<SendMessageUseCase>(),
++        serviceLocator<ChatRealtimeRepository>(),
++      ),
++    );
++  }
+ }
+diff --git a/lib/core/routing/app_router.dart b/lib/core/routing/app_router.dart
+index 4dae825..f16cece 100644
+--- a/lib/core/routing/app_router.dart
++++ b/lib/core/routing/app_router.dart
+@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
+ import '../../features/auth/presentation/bloc/auth_bloc.dart';
+ import '../../features/auth/presentation/pages/login_page.dart';
+ import '../../features/auth/presentation/pages/register_page.dart';
++import '../../features/chat/presentation/bloc/channels_bloc.dart';
++import '../../features/chat/presentation/bloc/chat_conversation_bloc.dart';
++import '../../features/chat/presentation/pages/channels_list_page.dart';
++import '../../features/chat/presentation/pages/chat_conversation_page.dart';
+ import '../di/injection_container.dart';
+ 
+ final GoRouter appRouter = GoRouter(
+@@ -25,6 +29,23 @@ final GoRouter appRouter = GoRouter(
+         child: const RegisterPage(),
+       ),
+     ),
++    GoRoute(
++      path: '/channels',
++      builder: (context, state) => BlocProvider(
++        create: (_) => serviceLocator<ChannelsBloc>(),
++        child: const ChannelsListPage(),
++      ),
++    ),
++    GoRoute(
++      path: '/channels/:channelId',
++      builder: (context, state) {
++        final channelId = state.pathParameters['channelId'] ?? '';
++        return BlocProvider(
++          create: (_) => serviceLocator<ChatConversationBloc>(),
++          child: ChatConversationPage(channelId: channelId),
++        );
++      },
++    ),
+   ],
+ );
+ 
+@@ -36,9 +57,19 @@ final class CoreHomePage extends StatelessWidget {
+     return Scaffold(
+       appBar: AppBar(title: const Text('Ultimate Solution')),
+       body: Center(
+-        child: FilledButton(
+-          onPressed: () => context.go('/login'),
+-          child: const Text('Sign in'),
++        child: Column(
++          mainAxisSize: MainAxisSize.min,
++          children: [
++            FilledButton(
++              onPressed: () => context.go('/login'),
++              child: const Text('Sign in'),
++            ),
++            const SizedBox(height: 12),
++            OutlinedButton(
++              onPressed: () => context.go('/channels'),
++              child: const Text('Channels'),
++            ),
++          ],
+         ),
+       ),
+     );
+diff --git a/lib/features/chat/data/datasources/chat_realtime_data_source.dart b/lib/features/chat/data/datasources/chat_realtime_data_source.dart
+new file mode 100644
+index 0000000..c951f04
+--- /dev/null
++++ b/lib/features/chat/data/datasources/chat_realtime_data_source.dart
+@@ -0,0 +1,212 @@
++import 'dart:async';
++
++import 'package:signalr_netcore/signalr_client.dart';
++
++import '../../../../core/network/api_client.dart';
++import '../models/chat_models.dart';
++
++/// Low-level SignalR ChatHub client. Token is supplied via [AccessTokenStore]
++/// the same way [ApiClient] attaches Bearer headers.
++abstract interface class ChatRealtimeDataSource {
++  Future<void> connect();
++
++  Future<void> disconnect();
++
++  Future<void> subscribeChannel(String channelId);
++
++  Future<void> unsubscribeChannel(String channelId);
++
++  Future<void> startTyping(String channelId);
++
++  Future<void> stopTyping(String channelId);
++
++  Stream<ChatMessageModel> get messageCreated;
++
++  Stream<ChatMessageModel> get messageUpdated;
++
++  Stream<ChatMessageModel> get messageDeleted;
++
++  Stream<TypingChangedModel> get typingChanged;
++
++  Stream<PresenceChangedModel> get presenceChanged;
++}
++
++final class SignalRChatRealtimeDataSource implements ChatRealtimeDataSource {
++  SignalRChatRealtimeDataSource({
++    required this._tokenStore,
++    String? hubUrl,
++  }) : _hubUrl =
++           hubUrl ??
++           '${const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:5042')}/hubs/chat';
++
++  final AccessTokenStore _tokenStore;
++  final String _hubUrl;
++
++  HubConnection? _connection;
++
++  final _messageCreatedController =
++      StreamController<ChatMessageModel>.broadcast();
++  final _messageUpdatedController =
++      StreamController<ChatMessageModel>.broadcast();
++  final _messageDeletedController =
++      StreamController<ChatMessageModel>.broadcast();
++  final _typingChangedController =
++      StreamController<TypingChangedModel>.broadcast();
++  final _presenceChangedController =
++      StreamController<PresenceChangedModel>.broadcast();
++
++  @override
++  Stream<ChatMessageModel> get messageCreated =>
++      _messageCreatedController.stream;
++
++  @override
++  Stream<ChatMessageModel> get messageUpdated =>
++      _messageUpdatedController.stream;
++
++  @override
++  Stream<ChatMessageModel> get messageDeleted =>
++      _messageDeletedController.stream;
++
++  @override
++  Stream<TypingChangedModel> get typingChanged =>
++      _typingChangedController.stream;
++
++  @override
++  Stream<PresenceChangedModel> get presenceChanged =>
++      _presenceChangedController.stream;
++
++  @override
++  Future<void> connect() async {
++    if (_connection != null &&
++        _connection!.state == HubConnectionState.Connected) {
++      return;
++    }
++
++    await disconnect();
++
++    final httpOptions = HttpConnectionOptions(
++      accessTokenFactory: () async {
++        final token = await _tokenStore.read();
++        return token ?? '';
++      },
++    );
++
++    _connection = HubConnectionBuilder()
++        .withUrl(_hubUrl, options: httpOptions)
++        .withAutomaticReconnect()
++        .build();
++
++    _connection!.on('messageCreated', _onMessageCreated);
++    _connection!.on('messageUpdated', _onMessageUpdated);
++    _connection!.on('messageDeleted', _onMessageDeleted);
++    _connection!.on('typingChanged', _onTypingChanged);
++    _connection!.on('presenceChanged', _onPresenceChanged);
++
++    await _connection!.start();
++  }
++
++  @override
++  Future<void> disconnect() async {
++    final connection = _connection;
++    _connection = null;
++    if (connection == null) {
++      return;
++    }
++    try {
++      await connection.stop();
++    } catch (_) {
++      // Connection may already be closed.
++    }
++  }
++
++  @override
++  Future<void> subscribeChannel(String channelId) async {
++    await _ensureConnected();
++    await _connection!.invoke('SubscribeChannel', args: <Object>[channelId]);
++  }
++
++  @override
++  Future<void> unsubscribeChannel(String channelId) async {
++    if (_connection?.state != HubConnectionState.Connected) {
++      return;
++    }
++    await _connection!.invoke('UnsubscribeChannel', args: <Object>[channelId]);
++  }
++
++  @override
++  Future<void> startTyping(String channelId) async {
++    await _ensureConnected();
++    await _connection!.invoke('StartTyping', args: <Object>[channelId]);
++  }
++
++  @override
++  Future<void> stopTyping(String channelId) async {
++    await _ensureConnected();
++    await _connection!.invoke('StopTyping', args: <Object>[channelId]);
++  }
++
++  Future<void> _ensureConnected() async {
++    if (_connection == null ||
++        _connection!.state != HubConnectionState.Connected) {
++      await connect();
++    }
++  }
++
++  void _onMessageCreated(List<Object?>? args) {
++    final json = _asJsonMap(args);
++    if (json != null) {
++      _messageCreatedController.add(ChatMessageModel.fromJson(json));
++    }
++  }
++
++  void _onMessageUpdated(List<Object?>? args) {
++    final json = _asJsonMap(args);
++    if (json != null) {
++      _messageUpdatedController.add(ChatMessageModel.fromJson(json));
++    }
++  }
++
++  void _onMessageDeleted(List<Object?>? args) {
++    final json = _asJsonMap(args);
++    if (json != null) {
++      _messageDeletedController.add(ChatMessageModel.fromJson(json));
++    }
++  }
++
++  void _onTypingChanged(List<Object?>? args) {
++    final json = _asJsonMap(args);
++    if (json != null) {
++      _typingChangedController.add(TypingChangedModel.fromJson(json));
++    }
++  }
++
++  void _onPresenceChanged(List<Object?>? args) {
++    final json = _asJsonMap(args);
++    if (json != null) {
++      _presenceChangedController.add(PresenceChangedModel.fromJson(json));
++    }
++  }
++
++  Map<String, dynamic>? _asJsonMap(List<Object?>? args) {
++    if (args == null || args.isEmpty) {
++      return null;
++    }
++    final first = args.first;
++    if (first is Map<String, dynamic>) {
++      return first;
++    }
++    if (first is Map) {
++      return Map<String, dynamic>.from(first);
++    }
++    return null;
++  }
++
++  Future<void> dispose() async {
++    await disconnect();
++    await _messageCreatedController.close();
++    await _messageUpdatedController.close();
++    await _messageDeletedController.close();
++    await _typingChangedController.close();
++    await _presenceChangedController.close();
++  }
++}
+diff --git a/lib/features/chat/data/datasources/chat_remote_data_source.dart b/lib/features/chat/data/datasources/chat_remote_data_source.dart
+new file mode 100644
+index 0000000..33aebe8
+--- /dev/null
++++ b/lib/features/chat/data/datasources/chat_remote_data_source.dart
+@@ -0,0 +1,191 @@
++import 'package:dio/dio.dart';
++
++import '../../../../core/network/api_client.dart';
++import '../models/chat_models.dart';
++
++abstract interface class ChatRemoteDataSource {
++  Future<List<ChatChannelModel>> getChannels();
++
++  Future<ChatChannelModel> getChannel(String channelId);
++
++  Future<ChatChannelModel> createChannel(CreateChannelRequestModel request);
++
++  Future<List<ChatMessageModel>> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  });
++
++  Future<ChatMessageModel> sendMessage({
++    required String channelId,
++    required SendChatMessageRequestModel request,
++  });
++
++  Future<ChatMessageModel> editMessage({
++    required String messageId,
++    required UpdateChatMessageRequestModel request,
++  });
++
++  Future<ChatMessageModel> deleteMessage(String messageId);
++
++  Future<MessageReadModel> markMessageRead(String messageId);
++
++  Future<ChatChannelModel> addMember({
++    required String channelId,
++    required AddChannelMemberRequestModel request,
++  });
++
++  Future<ChatChannelModel> removeMember({
++    required String channelId,
++    required String userId,
++  });
++}
++
++final class DioChatRemoteDataSource implements ChatRemoteDataSource {
++  const DioChatRemoteDataSource(this._client);
++
++  final ApiClient _client;
++
++  @override
++  Future<List<ChatChannelModel>> getChannels() async {
++    final response = await _client.dio.get<Map<String, dynamic>>(
++      '/api/v1/channels',
++    );
++    return _parseList(response, ChatChannelModel.fromJson);
++  }
++
++  @override
++  Future<ChatChannelModel> getChannel(String channelId) async {
++    final response = await _client.dio.get<Map<String, dynamic>>(
++      '/api/v1/channels/$channelId',
++    );
++    return _parseObject(response, ChatChannelModel.fromJson);
++  }
++
++  @override
++  Future<ChatChannelModel> createChannel(
++    CreateChannelRequestModel request,
++  ) async {
++    final response = await _client.dio.post<Map<String, dynamic>>(
++      '/api/v1/channels',
++      data: request.toJson(),
++    );
++    return _parseObject(response, ChatChannelModel.fromJson);
++  }
++
++  @override
++  Future<List<ChatMessageModel>> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  }) async {
++    final response = await _client.dio.get<Map<String, dynamic>>(
++      '/api/v1/channels/$channelId/messages',
++      queryParameters: {
++        if (search != null && search.isNotEmpty) 'search': search,
++        'take': take,
++      },
++    );
++    return _parseList(response, ChatMessageModel.fromJson);
++  }
++
++  @override
++  Future<ChatMessageModel> sendMessage({
++    required String channelId,
++    required SendChatMessageRequestModel request,
++  }) async {
++    final response = await _client.dio.post<Map<String, dynamic>>(
++      '/api/v1/channels/$channelId/messages',
++      data: request.toJson(),
++    );
++    return _parseObject(response, ChatMessageModel.fromJson);
++  }
++
++  @override
++  Future<ChatMessageModel> editMessage({
++    required String messageId,
++    required UpdateChatMessageRequestModel request,
++  }) async {
++    final response = await _client.dio.patch<Map<String, dynamic>>(
++      '/api/v1/messages/$messageId',
++      data: request.toJson(),
++    );
++    return _parseObject(response, ChatMessageModel.fromJson);
++  }
++
++  @override
++  Future<ChatMessageModel> deleteMessage(String messageId) async {
++    final response = await _client.dio.delete<Map<String, dynamic>>(
++      '/api/v1/messages/$messageId',
++    );
++    return _parseObject(response, ChatMessageModel.fromJson);
++  }
++
++  @override
++  Future<MessageReadModel> markMessageRead(String messageId) async {
++    final response = await _client.dio.post<Map<String, dynamic>>(
++      '/api/v1/messages/$messageId/read',
++    );
++    return _parseObject(response, MessageReadModel.fromJson);
++  }
++
++  @override
++  Future<ChatChannelModel> addMember({
++    required String channelId,
++    required AddChannelMemberRequestModel request,
++  }) async {
++    final response = await _client.dio.post<Map<String, dynamic>>(
++      '/api/v1/channels/$channelId/members',
++      data: request.toJson(),
++    );
++    return _parseObject(response, ChatChannelModel.fromJson);
++  }
++
++  @override
++  Future<ChatChannelModel> removeMember({
++    required String channelId,
++    required String userId,
++  }) async {
++    final response = await _client.dio.delete<Map<String, dynamic>>(
++      '/api/v1/channels/$channelId/members/$userId',
++    );
++    return _parseObject(response, ChatChannelModel.fromJson);
++  }
++
++  T _parseObject<T>(
++    Response<Map<String, dynamic>> response,
++    T Function(Map<String, dynamic> json) fromJson,
++  ) {
++    final payload = response.data ?? const <String, dynamic>{};
++    if (payload['success'] != true ||
++        payload['data'] is! Map<String, dynamic>) {
++      throw DioException.badResponse(
++        statusCode: response.statusCode ?? 500,
++        requestOptions: response.requestOptions,
++        response: response,
++      );
++    }
++    return fromJson(payload['data']! as Map<String, dynamic>);
++  }
++
++  List<T> _parseList<T>(
++    Response<Map<String, dynamic>> response,
++    T Function(Map<String, dynamic> json) fromJson,
++  ) {
++    final payload = response.data ?? const <String, dynamic>{};
++    if (payload['success'] != true || payload['data'] is! List<dynamic>) {
++      throw DioException.badResponse(
++        statusCode: response.statusCode ?? 500,
++        requestOptions: response.requestOptions,
++        response: response,
++      );
++    }
++    final items = <T>[];
++    for (final item in payload['data']! as List<dynamic>) {
++      if (item is Map<String, dynamic>) {
++        items.add(fromJson(item));
++      }
++    }
++    return items;
++  }
++}
+diff --git a/lib/features/chat/data/models/chat_models.dart b/lib/features/chat/data/models/chat_models.dart
+new file mode 100644
+index 0000000..75ec842
+--- /dev/null
++++ b/lib/features/chat/data/models/chat_models.dart
+@@ -0,0 +1,258 @@
++import '../../domain/entities/chat_channel.dart';
++import '../../domain/entities/chat_message.dart';
++import '../../domain/entities/chat_realtime_events.dart';
++import '../../domain/entities/message_read.dart';
++
++final class ChannelMembershipModel {
++  const ChannelMembershipModel({
++    required this.userId,
++    required this.role,
++    required this.joinedAtUtc,
++  });
++
++  final String userId;
++  final int role;
++  final DateTime joinedAtUtc;
++
++  factory ChannelMembershipModel.fromJson(Map<String, dynamic> json) {
++    return ChannelMembershipModel(
++      userId: json['userId'] as String,
++      role: json['role'] as int,
++      joinedAtUtc: DateTime.parse(json['joinedAtUtc'] as String),
++    );
++  }
++
++  ChannelMembership toEntity() => ChannelMembership(
++    userId: userId,
++    role: ChannelMemberRole.fromValue(role),
++    joinedAtUtc: joinedAtUtc,
++  );
++}
++
++final class ChatChannelModel {
++  const ChatChannelModel({
++    required this.id,
++    required this.name,
++    required this.type,
++    required this.createdByUserId,
++    required this.createdAtUtc,
++    required this.isArchived,
++    this.archivedAtUtc,
++    required this.members,
++  });
++
++  final String id;
++  final String name;
++  final int type;
++  final String createdByUserId;
++  final DateTime createdAtUtc;
++  final bool isArchived;
++  final DateTime? archivedAtUtc;
++  final List<ChannelMembershipModel> members;
++
++  factory ChatChannelModel.fromJson(Map<String, dynamic> json) {
++    final membersRaw = json['members'];
++    final members = <ChannelMembershipModel>[];
++    if (membersRaw is List<dynamic>) {
++      for (final item in membersRaw) {
++        if (item is Map<String, dynamic>) {
++          members.add(ChannelMembershipModel.fromJson(item));
++        }
++      }
++    }
++
++    return ChatChannelModel(
++      id: json['id'] as String,
++      name: json['name'] as String,
++      type: json['type'] as int,
++      createdByUserId: json['createdByUserId'] as String,
++      createdAtUtc: DateTime.parse(json['createdAtUtc'] as String),
++      isArchived: json['isArchived'] as bool? ?? false,
++      archivedAtUtc: json['archivedAtUtc'] == null
++          ? null
++          : DateTime.parse(json['archivedAtUtc'] as String),
++      members: members,
++    );
++  }
++
++  ChatChannel toEntity() => ChatChannel(
++    id: id,
++    name: name,
++    type: ChatChannelType.fromValue(type),
++    createdByUserId: createdByUserId,
++    createdAtUtc: createdAtUtc,
++    isArchived: isArchived,
++    archivedAtUtc: archivedAtUtc,
++    members: [for (final member in members) member.toEntity()],
++  );
++}
++
++final class ChatMessageModel {
++  const ChatMessageModel({
++    required this.id,
++    required this.channelId,
++    required this.senderUserId,
++    required this.body,
++    required this.createdAtUtc,
++    this.editedAtUtc,
++    this.deletedAtUtc,
++  });
++
++  final String id;
++  final String channelId;
++  final String senderUserId;
++  final String body;
++  final DateTime createdAtUtc;
++  final DateTime? editedAtUtc;
++  final DateTime? deletedAtUtc;
++
++  factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
++    return ChatMessageModel(
++      id: json['id'] as String,
++      channelId: json['channelId'] as String,
++      senderUserId: json['senderUserId'] as String,
++      body: json['body'] as String,
++      createdAtUtc: DateTime.parse(json['createdAtUtc'] as String),
++      editedAtUtc: json['editedAtUtc'] == null
++          ? null
++          : DateTime.parse(json['editedAtUtc'] as String),
++      deletedAtUtc: json['deletedAtUtc'] == null
++          ? null
++          : DateTime.parse(json['deletedAtUtc'] as String),
++    );
++  }
++
++  ChatMessage toEntity() => ChatMessage(
++    id: id,
++    channelId: channelId,
++    senderUserId: senderUserId,
++    body: body,
++    createdAtUtc: createdAtUtc,
++    editedAtUtc: editedAtUtc,
++    deletedAtUtc: deletedAtUtc,
++  );
++}
++
++final class MessageReadModel {
++  const MessageReadModel({
++    required this.channelId,
++    required this.userId,
++    required this.lastReadMessageId,
++    required this.lastReadAtUtc,
++  });
++
++  final String channelId;
++  final String userId;
++  final String lastReadMessageId;
++  final DateTime lastReadAtUtc;
++
++  factory MessageReadModel.fromJson(Map<String, dynamic> json) {
++    return MessageReadModel(
++      channelId: json['channelId'] as String,
++      userId: json['userId'] as String,
++      lastReadMessageId: json['lastReadMessageId'] as String,
++      lastReadAtUtc: DateTime.parse(json['lastReadAtUtc'] as String),
++    );
++  }
++
++  MessageRead toEntity() => MessageRead(
++    channelId: channelId,
++    userId: userId,
++    lastReadMessageId: lastReadMessageId,
++    lastReadAtUtc: lastReadAtUtc,
++  );
++}
++
++final class TypingChangedModel {
++  const TypingChangedModel({
++    required this.channelId,
++    required this.userId,
++    required this.isTyping,
++  });
++
++  final String channelId;
++  final String userId;
++  final bool isTyping;
++
++  factory TypingChangedModel.fromJson(Map<String, dynamic> json) {
++    return TypingChangedModel(
++      channelId: json['channelId'] as String,
++      userId: json['userId'] as String,
++      isTyping: json['isTyping'] as bool,
++    );
++  }
++
++  TypingChangedEvent toEntity() => TypingChangedEvent(
++    channelId: channelId,
++    userId: userId,
++    isTyping: isTyping,
++  );
++}
++
++final class PresenceChangedModel {
++  const PresenceChangedModel({
++    required this.userId,
++    required this.status,
++    required this.changedAtUtc,
++  });
++
++  final String userId;
++  final int status;
++  final DateTime changedAtUtc;
++
++  factory PresenceChangedModel.fromJson(Map<String, dynamic> json) {
++    return PresenceChangedModel(
++      userId: json['userId'] as String,
++      status: json['status'] as int,
++      changedAtUtc: DateTime.parse(json['changedAtUtc'] as String),
++    );
++  }
++
++  PresenceChangedEvent toEntity() => PresenceChangedEvent(
++    userId: userId,
++    status: PresenceStatus.fromValue(status),
++    changedAtUtc: changedAtUtc,
++  );
++}
++
++final class CreateChannelRequestModel {
++  const CreateChannelRequestModel({
++    required this.type,
++    this.name,
++    required this.memberIds,
++  });
++
++  final int type;
++  final String? name;
++  final List<String> memberIds;
++
++  Map<String, dynamic> toJson() => {
++    'type': type,
++    if (name != null) 'name': name,
++    'memberIds': memberIds,
++  };
++}
++
++final class SendChatMessageRequestModel {
++  const SendChatMessageRequestModel(this.body);
++
++  final String body;
++
++  Map<String, dynamic> toJson() => {'body': body};
++}
++
++final class UpdateChatMessageRequestModel {
++  const UpdateChatMessageRequestModel(this.body);
++
++  final String body;
++
++  Map<String, dynamic> toJson() => {'body': body};
++}
++
++final class AddChannelMemberRequestModel {
++  const AddChannelMemberRequestModel(this.userId);
++
++  final String userId;
++
++  Map<String, dynamic> toJson() => {'userId': userId};
++}
+diff --git a/lib/features/chat/data/repositories/chat_realtime_repository_impl.dart b/lib/features/chat/data/repositories/chat_realtime_repository_impl.dart
+new file mode 100644
+index 0000000..9538a18
+--- /dev/null
++++ b/lib/features/chat/data/repositories/chat_realtime_repository_impl.dart
+@@ -0,0 +1,51 @@
++import '../../domain/entities/chat_message.dart';
++import '../../domain/entities/chat_realtime_events.dart';
++import '../../domain/repositories/chat_realtime_repository.dart';
++import '../datasources/chat_realtime_data_source.dart';
++
++final class ChatRealtimeRepositoryImpl implements ChatRealtimeRepository {
++  ChatRealtimeRepositoryImpl(this._realtime);
++
++  final ChatRealtimeDataSource _realtime;
++
++  @override
++  Future<void> connect() => _realtime.connect();
++
++  @override
++  Future<void> disconnect() => _realtime.disconnect();
++
++  @override
++  Future<void> subscribeChannel(String channelId) =>
++      _realtime.subscribeChannel(channelId);
++
++  @override
++  Future<void> unsubscribeChannel(String channelId) =>
++      _realtime.unsubscribeChannel(channelId);
++
++  @override
++  Future<void> startTyping(String channelId) =>
++      _realtime.startTyping(channelId);
++
++  @override
++  Future<void> stopTyping(String channelId) => _realtime.stopTyping(channelId);
++
++  @override
++  Stream<ChatMessage> get messageCreated =>
++      _realtime.messageCreated.map((model) => model.toEntity());
++
++  @override
++  Stream<ChatMessage> get messageUpdated =>
++      _realtime.messageUpdated.map((model) => model.toEntity());
++
++  @override
++  Stream<ChatMessage> get messageDeleted =>
++      _realtime.messageDeleted.map((model) => model.toEntity());
++
++  @override
++  Stream<TypingChangedEvent> get typingChanged =>
++      _realtime.typingChanged.map((model) => model.toEntity());
++
++  @override
++  Stream<PresenceChangedEvent> get presenceChanged =>
++      _realtime.presenceChanged.map((model) => model.toEntity());
++}
+diff --git a/lib/features/chat/data/repositories/chat_repository_impl.dart b/lib/features/chat/data/repositories/chat_repository_impl.dart
+new file mode 100644
+index 0000000..f652386
+--- /dev/null
++++ b/lib/features/chat/data/repositories/chat_repository_impl.dart
+@@ -0,0 +1,179 @@
++import 'package:dio/dio.dart';
++
++import '../../../../core/errors/failures.dart';
++import '../../domain/entities/chat_channel.dart';
++import '../../domain/entities/chat_message.dart';
++import '../../domain/entities/message_read.dart';
++import '../../domain/repositories/chat_repository.dart';
++import '../datasources/chat_remote_data_source.dart';
++import '../models/chat_models.dart';
++
++final class ChatRepositoryImpl implements ChatRepository {
++  ChatRepositoryImpl(this._remote);
++
++  final ChatRemoteDataSource _remote;
++
++  @override
++  Future<({List<ChatChannel>? channels, Failure? failure})> getChannels() async {
++    try {
++      final models = await _remote.getChannels();
++      return (
++        channels: [for (final model in models) model.toEntity()],
++        failure: null,
++      );
++    } catch (error) {
++      return (channels: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> getChannel(
++    String channelId,
++  ) async {
++    try {
++      final model = await _remote.getChannel(channelId);
++      return (channel: model.toEntity(), failure: null);
++    } catch (error) {
++      return (channel: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> createChannel({
++    required ChatChannelType type,
++    String? name,
++    required List<String> memberIds,
++  }) async {
++    try {
++      final model = await _remote.createChannel(
++        CreateChannelRequestModel(
++          type: type.value,
++          name: name,
++          memberIds: memberIds,
++        ),
++      );
++      return (channel: model.toEntity(), failure: null);
++    } catch (error) {
++      return (channel: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({List<ChatMessage>? messages, Failure? failure})> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  }) async {
++    try {
++      final models = await _remote.getMessages(
++        channelId: channelId,
++        search: search,
++        take: take,
++      );
++      return (
++        messages: [for (final model in models) model.toEntity()],
++        failure: null,
++      );
++    } catch (error) {
++      return (messages: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> sendMessage({
++    required String channelId,
++    required String body,
++  }) async {
++    try {
++      final model = await _remote.sendMessage(
++        channelId: channelId,
++        request: SendChatMessageRequestModel(body),
++      );
++      return (message: model.toEntity(), failure: null);
++    } catch (error) {
++      return (message: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> editMessage({
++    required String messageId,
++    required String body,
++  }) async {
++    try {
++      final model = await _remote.editMessage(
++        messageId: messageId,
++        request: UpdateChatMessageRequestModel(body),
++      );
++      return (message: model.toEntity(), failure: null);
++    } catch (error) {
++      return (message: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> deleteMessage(
++    String messageId,
++  ) async {
++    try {
++      final model = await _remote.deleteMessage(messageId);
++      return (message: model.toEntity(), failure: null);
++    } catch (error) {
++      return (message: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({MessageRead? read, Failure? failure})> markMessageRead(
++    String messageId,
++  ) async {
++    try {
++      final model = await _remote.markMessageRead(messageId);
++      return (read: model.toEntity(), failure: null);
++    } catch (error) {
++      return (read: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> addMember({
++    required String channelId,
++    required String userId,
++  }) async {
++    try {
++      final model = await _remote.addMember(
++        channelId: channelId,
++        request: AddChannelMemberRequestModel(userId),
++      );
++      return (channel: model.toEntity(), failure: null);
++    } catch (error) {
++      return (channel: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> removeMember({
++    required String channelId,
++    required String userId,
++  }) async {
++    try {
++      final model = await _remote.removeMember(
++        channelId: channelId,
++        userId: userId,
++      );
++      return (channel: model.toEntity(), failure: null);
++    } catch (error) {
++      return (channel: null, failure: _mapCaughtError(error));
++    }
++  }
++
++  Failure _mapCaughtError(Object error) {
++    if (error is Failure) {
++      return error;
++    }
++    if (error is DioException && error.error is Failure) {
++      return error.error! as Failure;
++    }
++    return const UnknownFailure();
++  }
++}
+diff --git a/lib/features/chat/domain/entities/chat_channel.dart b/lib/features/chat/domain/entities/chat_channel.dart
+new file mode 100644
+index 0000000..5c9b53f
+--- /dev/null
++++ b/lib/features/chat/domain/entities/chat_channel.dart
+@@ -0,0 +1,64 @@
++enum ChatChannelType {
++  direct(1),
++  group(2),
++  channel(3);
++
++  const ChatChannelType(this.value);
++  final int value;
++
++  static ChatChannelType fromValue(int value) {
++    return ChatChannelType.values.firstWhere(
++      (type) => type.value == value,
++      orElse: () => ChatChannelType.group,
++    );
++  }
++}
++
++enum ChannelMemberRole {
++  member(1),
++  owner(2);
++
++  const ChannelMemberRole(this.value);
++  final int value;
++
++  static ChannelMemberRole fromValue(int value) {
++    return ChannelMemberRole.values.firstWhere(
++      (role) => role.value == value,
++      orElse: () => ChannelMemberRole.member,
++    );
++  }
++}
++
++final class ChannelMembership {
++  const ChannelMembership({
++    required this.userId,
++    required this.role,
++    required this.joinedAtUtc,
++  });
++
++  final String userId;
++  final ChannelMemberRole role;
++  final DateTime joinedAtUtc;
++}
++
++final class ChatChannel {
++  const ChatChannel({
++    required this.id,
++    required this.name,
++    required this.type,
++    required this.createdByUserId,
++    required this.createdAtUtc,
++    required this.isArchived,
++    this.archivedAtUtc,
++    required this.members,
++  });
++
++  final String id;
++  final String name;
++  final ChatChannelType type;
++  final String createdByUserId;
++  final DateTime createdAtUtc;
++  final bool isArchived;
++  final DateTime? archivedAtUtc;
++  final List<ChannelMembership> members;
++}
+diff --git a/lib/features/chat/domain/entities/chat_message.dart b/lib/features/chat/domain/entities/chat_message.dart
+new file mode 100644
+index 0000000..75d9591
+--- /dev/null
++++ b/lib/features/chat/domain/entities/chat_message.dart
+@@ -0,0 +1,21 @@
++final class ChatMessage {
++  const ChatMessage({
++    required this.id,
++    required this.channelId,
++    required this.senderUserId,
++    required this.body,
++    required this.createdAtUtc,
++    this.editedAtUtc,
++    this.deletedAtUtc,
++  });
++
++  final String id;
++  final String channelId;
++  final String senderUserId;
++  final String body;
++  final DateTime createdAtUtc;
++  final DateTime? editedAtUtc;
++  final DateTime? deletedAtUtc;
++
++  bool get isDeleted => deletedAtUtc != null;
++}
+diff --git a/lib/features/chat/domain/entities/chat_realtime_events.dart b/lib/features/chat/domain/entities/chat_realtime_events.dart
+new file mode 100644
+index 0000000..a0b9543
+--- /dev/null
++++ b/lib/features/chat/domain/entities/chat_realtime_events.dart
+@@ -0,0 +1,39 @@
++enum PresenceStatus {
++  offline(1),
++  online(2),
++  away(3);
++
++  const PresenceStatus(this.value);
++  final int value;
++
++  static PresenceStatus fromValue(int value) {
++    return PresenceStatus.values.firstWhere(
++      (status) => status.value == value,
++      orElse: () => PresenceStatus.offline,
++    );
++  }
++}
++
++final class TypingChangedEvent {
++  const TypingChangedEvent({
++    required this.channelId,
++    required this.userId,
++    required this.isTyping,
++  });
++
++  final String channelId;
++  final String userId;
++  final bool isTyping;
++}
++
++final class PresenceChangedEvent {
++  const PresenceChangedEvent({
++    required this.userId,
++    required this.status,
++    required this.changedAtUtc,
++  });
++
++  final String userId;
++  final PresenceStatus status;
++  final DateTime changedAtUtc;
++}
+diff --git a/lib/features/chat/domain/entities/message_read.dart b/lib/features/chat/domain/entities/message_read.dart
+new file mode 100644
+index 0000000..cdba9f4
+--- /dev/null
++++ b/lib/features/chat/domain/entities/message_read.dart
+@@ -0,0 +1,13 @@
++final class MessageRead {
++  const MessageRead({
++    required this.channelId,
++    required this.userId,
++    required this.lastReadMessageId,
++    required this.lastReadAtUtc,
++  });
++
++  final String channelId;
++  final String userId;
++  final String lastReadMessageId;
++  final DateTime lastReadAtUtc;
++}
+diff --git a/lib/features/chat/domain/repositories/chat_realtime_repository.dart b/lib/features/chat/domain/repositories/chat_realtime_repository.dart
+new file mode 100644
+index 0000000..47ab37a
+--- /dev/null
++++ b/lib/features/chat/domain/repositories/chat_realtime_repository.dart
+@@ -0,0 +1,27 @@
++import '../entities/chat_message.dart';
++import '../entities/chat_realtime_events.dart';
++
++/// Domain gateway for ChatHub realtime events (messageCreated, typing, presence).
++abstract interface class ChatRealtimeRepository {
++  Future<void> connect();
++
++  Future<void> disconnect();
++
++  Future<void> subscribeChannel(String channelId);
++
++  Future<void> unsubscribeChannel(String channelId);
++
++  Future<void> startTyping(String channelId);
++
++  Future<void> stopTyping(String channelId);
++
++  Stream<ChatMessage> get messageCreated;
++
++  Stream<ChatMessage> get messageUpdated;
++
++  Stream<ChatMessage> get messageDeleted;
++
++  Stream<TypingChangedEvent> get typingChanged;
++
++  Stream<PresenceChangedEvent> get presenceChanged;
++}
+diff --git a/lib/features/chat/domain/repositories/chat_repository.dart b/lib/features/chat/domain/repositories/chat_repository.dart
+new file mode 100644
+index 0000000..018f7cc
+--- /dev/null
++++ b/lib/features/chat/domain/repositories/chat_repository.dart
+@@ -0,0 +1,50 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_channel.dart';
++import '../entities/chat_message.dart';
++import '../entities/message_read.dart';
++
++abstract interface class ChatRepository {
++  Future<({List<ChatChannel>? channels, Failure? failure})> getChannels();
++
++  Future<({ChatChannel? channel, Failure? failure})> getChannel(String channelId);
++
++  Future<({ChatChannel? channel, Failure? failure})> createChannel({
++    required ChatChannelType type,
++    String? name,
++    required List<String> memberIds,
++  });
++
++  Future<({List<ChatMessage>? messages, Failure? failure})> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  });
++
++  Future<({ChatMessage? message, Failure? failure})> sendMessage({
++    required String channelId,
++    required String body,
++  });
++
++  Future<({ChatMessage? message, Failure? failure})> editMessage({
++    required String messageId,
++    required String body,
++  });
++
++  Future<({ChatMessage? message, Failure? failure})> deleteMessage(
++    String messageId,
++  );
++
++  Future<({MessageRead? read, Failure? failure})> markMessageRead(
++    String messageId,
++  );
++
++  Future<({ChatChannel? channel, Failure? failure})> addMember({
++    required String channelId,
++    required String userId,
++  });
++
++  Future<({ChatChannel? channel, Failure? failure})> removeMember({
++    required String channelId,
++    required String userId,
++  });
++}
+diff --git a/lib/features/chat/domain/usecases/add_channel_member_use_case.dart b/lib/features/chat/domain/usecases/add_channel_member_use_case.dart
+new file mode 100644
+index 0000000..37d6b7d
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/add_channel_member_use_case.dart
+@@ -0,0 +1,16 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_channel.dart';
++import '../repositories/chat_repository.dart';
++
++final class AddChannelMemberUseCase {
++  const AddChannelMemberUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({ChatChannel? channel, Failure? failure})> call({
++    required String channelId,
++    required String userId,
++  }) {
++    return _repository.addMember(channelId: channelId, userId: userId);
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/create_channel_use_case.dart b/lib/features/chat/domain/usecases/create_channel_use_case.dart
+new file mode 100644
+index 0000000..dad5bdd
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/create_channel_use_case.dart
+@@ -0,0 +1,21 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_channel.dart';
++import '../repositories/chat_repository.dart';
++
++final class CreateChannelUseCase {
++  const CreateChannelUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({ChatChannel? channel, Failure? failure})> call({
++    required ChatChannelType type,
++    String? name,
++    required List<String> memberIds,
++  }) {
++    return _repository.createChannel(
++      type: type,
++      name: name,
++      memberIds: memberIds,
++    );
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/delete_message_use_case.dart b/lib/features/chat/domain/usecases/delete_message_use_case.dart
+new file mode 100644
+index 0000000..07d4319
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/delete_message_use_case.dart
+@@ -0,0 +1,13 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_message.dart';
++import '../repositories/chat_repository.dart';
++
++final class DeleteMessageUseCase {
++  const DeleteMessageUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({ChatMessage? message, Failure? failure})> call(String messageId) {
++    return _repository.deleteMessage(messageId);
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/edit_message_use_case.dart b/lib/features/chat/domain/usecases/edit_message_use_case.dart
+new file mode 100644
+index 0000000..c7ca641
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/edit_message_use_case.dart
+@@ -0,0 +1,16 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_message.dart';
++import '../repositories/chat_repository.dart';
++
++final class EditMessageUseCase {
++  const EditMessageUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({ChatMessage? message, Failure? failure})> call({
++    required String messageId,
++    required String body,
++  }) {
++    return _repository.editMessage(messageId: messageId, body: body);
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/get_channel_use_case.dart b/lib/features/chat/domain/usecases/get_channel_use_case.dart
+new file mode 100644
+index 0000000..6b10fa4
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/get_channel_use_case.dart
+@@ -0,0 +1,13 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_channel.dart';
++import '../repositories/chat_repository.dart';
++
++final class GetChannelUseCase {
++  const GetChannelUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({ChatChannel? channel, Failure? failure})> call(String channelId) {
++    return _repository.getChannel(channelId);
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/get_channels_use_case.dart b/lib/features/chat/domain/usecases/get_channels_use_case.dart
+new file mode 100644
+index 0000000..d74ae7b
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/get_channels_use_case.dart
+@@ -0,0 +1,13 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_channel.dart';
++import '../repositories/chat_repository.dart';
++
++final class GetChannelsUseCase {
++  const GetChannelsUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({List<ChatChannel>? channels, Failure? failure})> call() {
++    return _repository.getChannels();
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/get_messages_use_case.dart b/lib/features/chat/domain/usecases/get_messages_use_case.dart
+new file mode 100644
+index 0000000..190cf05
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/get_messages_use_case.dart
+@@ -0,0 +1,21 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_message.dart';
++import '../repositories/chat_repository.dart';
++
++final class GetMessagesUseCase {
++  const GetMessagesUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({List<ChatMessage>? messages, Failure? failure})> call({
++    required String channelId,
++    String? search,
++    int take = 50,
++  }) {
++    return _repository.getMessages(
++      channelId: channelId,
++      search: search,
++      take: take,
++    );
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/mark_message_read_use_case.dart b/lib/features/chat/domain/usecases/mark_message_read_use_case.dart
+new file mode 100644
+index 0000000..167acaf
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/mark_message_read_use_case.dart
+@@ -0,0 +1,13 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/message_read.dart';
++import '../repositories/chat_repository.dart';
++
++final class MarkMessageReadUseCase {
++  const MarkMessageReadUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({MessageRead? read, Failure? failure})> call(String messageId) {
++    return _repository.markMessageRead(messageId);
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/remove_channel_member_use_case.dart b/lib/features/chat/domain/usecases/remove_channel_member_use_case.dart
+new file mode 100644
+index 0000000..1b18565
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/remove_channel_member_use_case.dart
+@@ -0,0 +1,16 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_channel.dart';
++import '../repositories/chat_repository.dart';
++
++final class RemoveChannelMemberUseCase {
++  const RemoveChannelMemberUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({ChatChannel? channel, Failure? failure})> call({
++    required String channelId,
++    required String userId,
++  }) {
++    return _repository.removeMember(channelId: channelId, userId: userId);
++  }
++}
+diff --git a/lib/features/chat/domain/usecases/send_message_use_case.dart b/lib/features/chat/domain/usecases/send_message_use_case.dart
+new file mode 100644
+index 0000000..66bc055
+--- /dev/null
++++ b/lib/features/chat/domain/usecases/send_message_use_case.dart
+@@ -0,0 +1,16 @@
++import '../../../../core/errors/failures.dart';
++import '../entities/chat_message.dart';
++import '../repositories/chat_repository.dart';
++
++final class SendMessageUseCase {
++  const SendMessageUseCase(this._repository);
++
++  final ChatRepository _repository;
++
++  Future<({ChatMessage? message, Failure? failure})> call({
++    required String channelId,
++    required String body,
++  }) {
++    return _repository.sendMessage(channelId: channelId, body: body);
++  }
++}
+diff --git a/lib/features/chat/presentation/bloc/channels_bloc.dart b/lib/features/chat/presentation/bloc/channels_bloc.dart
+new file mode 100644
+index 0000000..a5ebfee
+--- /dev/null
++++ b/lib/features/chat/presentation/bloc/channels_bloc.dart
+@@ -0,0 +1,59 @@
++import 'package:flutter_bloc/flutter_bloc.dart';
++
++import '../../../../core/errors/failures.dart';
++import '../../domain/entities/chat_channel.dart';
++import '../../domain/usecases/get_channels_use_case.dart';
++
++sealed class ChannelsEvent {
++  const ChannelsEvent();
++}
++
++final class ChannelsLoadRequested extends ChannelsEvent {
++  const ChannelsLoadRequested();
++}
++
++sealed class ChannelsState {
++  const ChannelsState();
++}
++
++final class ChannelsInitial extends ChannelsState {
++  const ChannelsInitial();
++}
++
++final class ChannelsLoading extends ChannelsState {
++  const ChannelsLoading();
++}
++
++final class ChannelsLoaded extends ChannelsState {
++  const ChannelsLoaded(this.channels);
++
++  final List<ChatChannel> channels;
++}
++
++final class ChannelsFailure extends ChannelsState {
++  const ChannelsFailure(this.failure);
++
++  final Failure failure;
++}
++
++final class ChannelsBloc extends Bloc<ChannelsEvent, ChannelsState> {
++  ChannelsBloc(this._getChannels) : super(const ChannelsInitial()) {
++    on<ChannelsLoadRequested>(_onLoad);
++  }
++
++  final GetChannelsUseCase _getChannels;
++
++  Future<void> _onLoad(
++    ChannelsLoadRequested event,
++    Emitter<ChannelsState> emit,
++  ) async {
++    emit(const ChannelsLoading());
++    final result = await _getChannels();
++    final channels = result.channels;
++    if (channels != null) {
++      emit(ChannelsLoaded(channels));
++    } else {
++      emit(ChannelsFailure(result.failure ?? const UnknownFailure()));
++    }
++  }
++}
+diff --git a/lib/features/chat/presentation/bloc/chat_conversation_bloc.dart b/lib/features/chat/presentation/bloc/chat_conversation_bloc.dart
+new file mode 100644
+index 0000000..59d6c58
+--- /dev/null
++++ b/lib/features/chat/presentation/bloc/chat_conversation_bloc.dart
+@@ -0,0 +1,297 @@
++import 'dart:async';
++
++import 'package:flutter_bloc/flutter_bloc.dart';
++
++import '../../../../core/errors/failures.dart';
++import '../../domain/entities/chat_message.dart';
++import '../../domain/entities/chat_realtime_events.dart';
++import '../../domain/repositories/chat_realtime_repository.dart';
++import '../../domain/usecases/get_messages_use_case.dart';
++import '../../domain/usecases/send_message_use_case.dart';
++
++sealed class ChatConversationEvent {
++  const ChatConversationEvent();
++}
++
++final class ChatConversationStarted extends ChatConversationEvent {
++  const ChatConversationStarted(this.channelId);
++
++  final String channelId;
++}
++
++final class ChatMessageSendRequested extends ChatConversationEvent {
++  const ChatMessageSendRequested(this.body);
++
++  final String body;
++}
++
++final class _RealtimeMessageReceived extends ChatConversationEvent {
++  const _RealtimeMessageReceived(this.message);
++
++  final ChatMessage message;
++}
++
++final class _RealtimeTypingChanged extends ChatConversationEvent {
++  const _RealtimeTypingChanged(this.event);
++
++  final TypingChangedEvent event;
++}
++
++final class _RealtimePresenceChanged extends ChatConversationEvent {
++  const _RealtimePresenceChanged(this.event);
++
++  final PresenceChangedEvent event;
++}
++
++sealed class ChatConversationState {
++  const ChatConversationState();
++}
++
++final class ChatConversationInitial extends ChatConversationState {
++  const ChatConversationInitial();
++}
++
++final class ChatConversationLoading extends ChatConversationState {
++  const ChatConversationLoading();
++}
++
++final class ChatConversationReady extends ChatConversationState {
++  const ChatConversationReady({
++    required this.channelId,
++    required this.messages,
++    this.typingUserIds = const {},
++    this.presenceByUserId = const {},
++    this.failure,
++    this.isSending = false,
++  });
++
++  final String channelId;
++  final List<ChatMessage> messages;
++  final Set<String> typingUserIds;
++  final Map<String, PresenceStatus> presenceByUserId;
++  final Failure? failure;
++  final bool isSending;
++
++  ChatConversationReady copyWith({
++    List<ChatMessage>? messages,
++    Set<String>? typingUserIds,
++    Map<String, PresenceStatus>? presenceByUserId,
++    Failure? failure,
++    bool clearFailure = false,
++    bool? isSending,
++  }) {
++    return ChatConversationReady(
++      channelId: channelId,
++      messages: messages ?? this.messages,
++      typingUserIds: typingUserIds ?? this.typingUserIds,
++      presenceByUserId: presenceByUserId ?? this.presenceByUserId,
++      failure: clearFailure ? null : (failure ?? this.failure),
++      isSending: isSending ?? this.isSending,
++    );
++  }
++}
++
++final class ChatConversationFailure extends ChatConversationState {
++  const ChatConversationFailure(this.failure);
++
++  final Failure failure;
++}
++
++final class ChatConversationBloc
++    extends Bloc<ChatConversationEvent, ChatConversationState> {
++  ChatConversationBloc(
++    this._getMessages,
++    this._sendMessage,
++    this._realtime,
++  ) : super(const ChatConversationInitial()) {
++    on<ChatConversationStarted>(_onStarted);
++    on<ChatMessageSendRequested>(_onSend);
++    on<_RealtimeMessageReceived>(_onRealtimeMessage);
++    on<_RealtimeTypingChanged>(_onRealtimeTyping);
++    on<_RealtimePresenceChanged>(_onRealtimePresence);
++  }
++
++  final GetMessagesUseCase _getMessages;
++  final SendMessageUseCase _sendMessage;
++  final ChatRealtimeRepository _realtime;
++
++  String? _channelId;
++  final List<StreamSubscription<dynamic>> _subscriptions = [];
++
++  Future<void> _onStarted(
++    ChatConversationStarted event,
++    Emitter<ChatConversationState> emit,
++  ) async {
++    await _tearDownRealtime();
++    _channelId = event.channelId;
++    emit(const ChatConversationLoading());
++
++    final result = await _getMessages(channelId: event.channelId);
++    final messages = result.messages;
++    if (messages == null) {
++      emit(ChatConversationFailure(result.failure ?? const UnknownFailure()));
++      return;
++    }
++
++    emit(
++      ChatConversationReady(
++        channelId: event.channelId,
++        messages: List<ChatMessage>.unmodifiable(messages),
++      ),
++    );
++
++    try {
++      await _realtime.connect();
++      await _realtime.subscribeChannel(event.channelId);
++      _subscriptions.addAll([
++        _realtime.messageCreated.listen((message) {
++          if (message.channelId == event.channelId) {
++            add(_RealtimeMessageReceived(message));
++          }
++        }),
++        _realtime.messageUpdated.listen((message) {
++          if (message.channelId == event.channelId) {
++            add(_RealtimeMessageReceived(message));
++          }
++        }),
++        _realtime.messageDeleted.listen((message) {
++          if (message.channelId == event.channelId) {
++            add(_RealtimeMessageReceived(message));
++          }
++        }),
++        _realtime.typingChanged.listen((typing) {
++          if (typing.channelId == event.channelId) {
++            add(_RealtimeTypingChanged(typing));
++          }
++        }),
++        _realtime.presenceChanged.listen((presence) {
++          add(_RealtimePresenceChanged(presence));
++        }),
++      ]);
++    } catch (_) {
++      // REST history still usable if hub connection fails.
++    }
++  }
++
++  Future<void> _onSend(
++    ChatMessageSendRequested event,
++    Emitter<ChatConversationState> emit,
++  ) async {
++    final current = state;
++    final channelId = _channelId;
++    if (current is! ChatConversationReady || channelId == null) {
++      return;
++    }
++
++    final body = event.body.trim();
++    if (body.isEmpty) {
++      return;
++    }
++
++    emit(current.copyWith(isSending: true, clearFailure: true));
++    final result = await _sendMessage(channelId: channelId, body: body);
++    final message = result.message;
++    if (message == null) {
++      emit(
++        current.copyWith(
++          isSending: false,
++          failure: result.failure ?? const UnknownFailure(),
++        ),
++      );
++      return;
++    }
++
++    final merged = _upsertMessage(current.messages, message);
++    emit(
++      current.copyWith(
++        messages: List<ChatMessage>.unmodifiable(merged),
++        isSending: false,
++        clearFailure: true,
++      ),
++    );
++  }
++
++  void _onRealtimeMessage(
++    _RealtimeMessageReceived event,
++    Emitter<ChatConversationState> emit,
++  ) {
++    final current = state;
++    if (current is! ChatConversationReady) {
++      return;
++    }
++    final merged = _upsertMessage(current.messages, event.message);
++    emit(
++      current.copyWith(messages: List<ChatMessage>.unmodifiable(merged)),
++    );
++  }
++
++  void _onRealtimeTyping(
++    _RealtimeTypingChanged event,
++    Emitter<ChatConversationState> emit,
++  ) {
++    final current = state;
++    if (current is! ChatConversationReady) {
++      return;
++    }
++    final typing = Set<String>.from(current.typingUserIds);
++    if (event.event.isTyping) {
++      typing.add(event.event.userId);
++    } else {
++      typing.remove(event.event.userId);
++    }
++    emit(current.copyWith(typingUserIds: typing));
++  }
++
++  void _onRealtimePresence(
++    _RealtimePresenceChanged event,
++    Emitter<ChatConversationState> emit,
++  ) {
++    final current = state;
++    if (current is! ChatConversationReady) {
++      return;
++    }
++    final presence = Map<String, PresenceStatus>.from(current.presenceByUserId);
++    presence[event.event.userId] = event.event.status;
++    emit(current.copyWith(presenceByUserId: presence));
++  }
++
++  List<ChatMessage> _upsertMessage(
++    List<ChatMessage> existing,
++    ChatMessage incoming,
++  ) {
++    final next = List<ChatMessage>.from(existing);
++    final index = next.indexWhere((message) => message.id == incoming.id);
++    if (incoming.isDeleted) {
++      if (index >= 0) {
++        next.removeAt(index);
++      }
++      return next;
++    }
++    if (index >= 0) {
++      next[index] = incoming;
++    } else {
++      next.add(incoming);
++    }
++    next.sort((a, b) => a.createdAtUtc.compareTo(b.createdAtUtc));
++    return next;
++  }
++
++  Future<void> _tearDownRealtime() async {
++    for (final subscription in _subscriptions) {
++      await subscription.cancel();
++    }
++    _subscriptions.clear();
++    final channelId = _channelId;
++    if (channelId != null) {
++      try {
++        await _realtime.unsubscribeChannel(channelId);
++      } catch (_) {}
++    }
++  }
++
++  @override
++  Future<void> close() async {
++    await _tearDownRealtime();
++    return super.close();
++  }
++}
+diff --git a/lib/features/chat/presentation/pages/channels_list_page.dart b/lib/features/chat/presentation/pages/channels_list_page.dart
+new file mode 100644
+index 0000000..6d1c30f
+--- /dev/null
++++ b/lib/features/chat/presentation/pages/channels_list_page.dart
+@@ -0,0 +1,85 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_bloc/flutter_bloc.dart';
++import 'package:go_router/go_router.dart';
++
++import '../../../../core/theme/app_theme.dart';
++import '../bloc/channels_bloc.dart';
++
++final class ChannelsListPage extends StatefulWidget {
++  const ChannelsListPage({super.key});
++
++  @override
++  State<ChannelsListPage> createState() => _ChannelsListPageState();
++}
++
++final class _ChannelsListPageState extends State<ChannelsListPage> {
++  @override
++  void initState() {
++    super.initState();
++    context.read<ChannelsBloc>().add(const ChannelsLoadRequested());
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    return Scaffold(
++      appBar: AppBar(title: const Text('Channels')),
++      body: BlocBuilder<ChannelsBloc, ChannelsState>(
++        builder: (context, state) {
++          return switch (state) {
++            ChannelsInitial() || ChannelsLoading() => const Center(
++              child: CircularProgressIndicator(),
++            ),
++            ChannelsFailure(:final failure) => Center(
++              child: Padding(
++                padding: const EdgeInsets.all(24),
++                child: Column(
++                  mainAxisSize: MainAxisSize.min,
++                  children: [
++                    Text(
++                      failure.message,
++                      style: TextStyle(
++                        color: Theme.of(context).colorScheme.error,
++                      ),
++                      textAlign: TextAlign.center,
++                    ),
++                    const SizedBox(height: 16),
++                    FilledButton(
++                      onPressed: () => context.read<ChannelsBloc>().add(
++                        const ChannelsLoadRequested(),
++                      ),
++                      child: const Text('Retry'),
++                    ),
++                  ],
++                ),
++              ),
++            ),
++            ChannelsLoaded(:final channels) when channels.isEmpty => Center(
++              child: Text(
++                'No channels yet.',
++                style: AppTextStyles.body.copyWith(color: AppColors.mutedText),
++              ),
++            ),
++            ChannelsLoaded(:final channels) => ListView.separated(
++              itemCount: channels.length,
++              separatorBuilder: (_, _) => const Divider(height: 1),
++              itemBuilder: (context, index) {
++                final channel = channels[index];
++                return ListTile(
++                  title: Text(channel.name),
++                  subtitle: Text(
++                    channel.isArchived ? 'Archived' : channel.type.name,
++                    style: AppTextStyles.body.copyWith(
++                      color: AppColors.mutedText,
++                      fontSize: 13,
++                    ),
++                  ),
++                  onTap: () => context.go('/channels/${channel.id}'),
++                );
++              },
++            ),
++          };
++        },
++      ),
++    );
++  }
++}
+diff --git a/lib/features/chat/presentation/pages/chat_conversation_page.dart b/lib/features/chat/presentation/pages/chat_conversation_page.dart
+new file mode 100644
+index 0000000..a2dcee5
+--- /dev/null
++++ b/lib/features/chat/presentation/pages/chat_conversation_page.dart
+@@ -0,0 +1,171 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_bloc/flutter_bloc.dart';
++
++import '../../../../core/theme/app_theme.dart';
++import '../bloc/chat_conversation_bloc.dart';
++
++final class ChatConversationPage extends StatefulWidget {
++  const ChatConversationPage({required this.channelId, super.key});
++
++  final String channelId;
++
++  @override
++  State<ChatConversationPage> createState() => _ChatConversationPageState();
++}
++
++final class _ChatConversationPageState extends State<ChatConversationPage> {
++  final _composerController = TextEditingController();
++
++  @override
++  void initState() {
++    super.initState();
++    context.read<ChatConversationBloc>().add(
++      ChatConversationStarted(widget.channelId),
++    );
++  }
++
++  @override
++  void dispose() {
++    _composerController.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    return Scaffold(
++      appBar: AppBar(title: const Text('Conversation')),
++      body: BlocBuilder<ChatConversationBloc, ChatConversationState>(
++        builder: (context, state) {
++          return switch (state) {
++            ChatConversationInitial() || ChatConversationLoading() =>
++              const Center(child: CircularProgressIndicator()),
++            ChatConversationFailure(:final failure) => Center(
++              child: Padding(
++                padding: const EdgeInsets.all(24),
++                child: Text(
++                  failure.message,
++                  style: TextStyle(
++                    color: Theme.of(context).colorScheme.error,
++                  ),
++                  textAlign: TextAlign.center,
++                ),
++              ),
++            ),
++            ChatConversationReady(
++              :final messages,
++              :final typingUserIds,
++              :final failure,
++              :final isSending,
++            ) =>
++              Column(
++                children: [
++                  if (failure != null)
++                    Material(
++                      color: Theme.of(context).colorScheme.errorContainer,
++                      child: Padding(
++                        padding: const EdgeInsets.all(12),
++                        child: Text(failure.message),
++                      ),
++                    ),
++                  Expanded(
++                    child: messages.isEmpty
++                        ? Center(
++                            child: Text(
++                              'No messages yet.',
++                              style: AppTextStyles.body.copyWith(
++                                color: AppColors.mutedText,
++                              ),
++                            ),
++                          )
++                        : ListView.builder(
++                            padding: const EdgeInsets.all(16),
++                            itemCount: messages.length,
++                            itemBuilder: (context, index) {
++                              final message = messages[index];
++                              return Padding(
++                                padding: const EdgeInsets.only(bottom: 12),
++                                child: Column(
++                                  crossAxisAlignment: CrossAxisAlignment.start,
++                                  children: [
++                                    Text(
++                                      message.body,
++                                      style: AppTextStyles.body,
++                                    ),
++                                    const SizedBox(height: 4),
++                                    Text(
++                                      message.editedAtUtc == null
++                                          ? message.createdAtUtc
++                                                .toLocal()
++                                                .toString()
++                                          : 'Edited ${message.editedAtUtc!.toLocal()}',
++                                      style: AppTextStyles.body.copyWith(
++                                        color: AppColors.mutedText,
++                                        fontSize: 12,
++                                      ),
++                                    ),
++                                  ],
++                                ),
++                              );
++                            },
++                          ),
++                  ),
++                  if (typingUserIds.isNotEmpty)
++                    Padding(
++                      padding: const EdgeInsets.symmetric(horizontal: 16),
++                      child: Align(
++                        alignment: Alignment.centerLeft,
++                        child: Text(
++                          'Someone is typing…',
++                          style: AppTextStyles.body.copyWith(
++                            color: AppColors.mutedText,
++                            fontSize: 12,
++                          ),
++                        ),
++                      ),
++                    ),
++                  SafeArea(
++                    child: Padding(
++                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
++                      child: Row(
++                        children: [
++                          Expanded(
++                            child: TextField(
++                              controller: _composerController,
++                              enabled: !isSending,
++                              decoration: const InputDecoration(
++                                labelText: 'Message',
++                              ),
++                              onSubmitted: (_) => _send(),
++                            ),
++                          ),
++                          const SizedBox(width: 8),
++                          FilledButton(
++                            onPressed: isSending ? null : _send,
++                            child: isSending
++                                ? const SizedBox(
++                                    width: 18,
++                                    height: 18,
++                                    child: CircularProgressIndicator(
++                                      strokeWidth: 2,
++                                    ),
++                                  )
++                                : const Text('Send'),
++                          ),
++                        ],
++                      ),
++                    ),
++                  ),
++                ],
++              ),
++          };
++        },
++      ),
++    );
++  }
++
++  void _send() {
++    final body = _composerController.text;
++    context.read<ChatConversationBloc>().add(ChatMessageSendRequested(body));
++    _composerController.clear();
++  }
++}
+diff --git a/pubspec.lock b/pubspec.lock
+index 0601985..4365493 100644
+--- a/pubspec.lock
++++ b/pubspec.lock
+@@ -129,6 +129,14 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "0.1.2"
++  fixnum:
++    dependency: transitive
++    description:
++      name: fixnum
++      sha256: b6dc7065e46c974bc7c5f143080a6764ec7a4be6da1285ececdc37be96de53be
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.1.1"
+   flutter:
+     dependency: "direct main"
+     description: flutter
+@@ -237,6 +245,14 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "2.0.2"
++  http:
++    dependency: transitive
++    description:
++      name: http
++      sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.6.0"
+   http_parser:
+     dependency: transitive
+     description:
+@@ -341,6 +357,14 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "1.1.0"
++  message_pack_dart:
++    dependency: transitive
++    description:
++      name: message_pack_dart
++      sha256: "71b9f0ff60e5896e60b337960bb535380d7dba3297b457ac763ccae807385b59"
++      url: "https://pub.dev"
++    source: hosted
++    version: "2.0.1"
+   meta:
+     dependency: transitive
+     description:
+@@ -453,6 +477,14 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "2.1.8"
++  pool:
++    dependency: transitive
++    description:
++      name: pool
++      sha256: "4177f68c237ea2128d1bee66ac17b2ce05ba3dbaafcbdd54c5d40a39d0b6b11c"
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.5.3"
+   provider:
+     dependency: transitive
+     description:
+@@ -477,6 +509,22 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "0.6.0"
++  shelf:
++    dependency: transitive
++    description:
++      name: shelf
++      sha256: e7dd780a7ffb623c57850b33f43309312fc863fb6aa3d276a754bb299839ef12
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.4.2"
++  signalr_netcore:
++    dependency: "direct main"
++    description:
++      name: signalr_netcore
++      sha256: "8d59dc61284c5ff8aa27c4e3e802fcf782367f06cf42b39d5ded81680b72f8b8"
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.4.4"
+   sky_engine:
+     dependency: transitive
+     description: flutter
+@@ -490,6 +538,22 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "1.10.2"
++  sse:
++    dependency: transitive
++    description:
++      name: sse
++      sha256: a9a804dbde8bfd369da3b4aa241d44d63a6486a97388c54ec166073d88c52302
++      url: "https://pub.dev"
++    source: hosted
++    version: "4.2.0"
++  sse_channel:
++    dependency: transitive
++    description:
++      name: sse_channel
++      sha256: "9aad5d4eef63faf6ecdefb636c0f857bd6f74146d2196087dcf4b17ab5b49b1b"
++      url: "https://pub.dev"
++    source: hosted
++    version: "0.1.1"
+   stack_trace:
+     dependency: transitive
+     description:
+@@ -530,6 +594,14 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "0.7.12"
++  tuple:
++    dependency: transitive
++    description:
++      name: tuple
++      sha256: a97ce2013f240b2f3807bcbaf218765b6f301c3eff91092bcfa23a039e7dd151
++      url: "https://pub.dev"
++    source: hosted
++    version: "2.0.2"
+   typed_data:
+     dependency: transitive
+     description:
+@@ -538,6 +610,14 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "1.4.0"
++  uuid:
++    dependency: transitive
++    description:
++      name: uuid
++      sha256: "9b129329f58692f6e6578329498a8fe9fbe98f090beb764ffbb8ee2eadd01dcd"
++      url: "https://pub.dev"
++    source: hosted
++    version: "4.6.0"
+   vector_math:
+     dependency: transitive
+     description:
+@@ -562,6 +642,22 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "1.1.1"
++  web_socket:
++    dependency: transitive
++    description:
++      name: web_socket
++      sha256: "34d64019aa8e36bf9842ac014bb5d2f5586ca73df5e4d9bf5c936975cae6982c"
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.0.1"
++  web_socket_channel:
++    dependency: transitive
++    description:
++      name: web_socket_channel
++      sha256: d645757fb0f4773d602444000a8131ff5d48c9e47adfe9772652dd1a4f2d45c8
++      url: "https://pub.dev"
++    source: hosted
++    version: "3.0.3"
+   win32:
+     dependency: transitive
+     description:
+diff --git a/pubspec.yaml b/pubspec.yaml
+index e936c08..61d5cbb 100644
+--- a/pubspec.yaml
++++ b/pubspec.yaml
+@@ -39,6 +39,7 @@ dependencies:
+   go_router: ^18.0.0
+   flutter_bloc: ^9.1.1
+   flutter_secure_storage: ^11.0.0
++  signalr_netcore: ^1.4.4
+ 
+ dev_dependencies:
+   flutter_test:
+diff --git a/test/app_router_test.dart b/test/app_router_test.dart
+index 8e372a5..dc2c086 100644
+--- a/test/app_router_test.dart
++++ b/test/app_router_test.dart
+@@ -24,6 +24,29 @@ void main() {
+     expect(match.matches, isNotEmpty);
+   });
+ 
++  test('GoRouter resolves /channels without a GoException', () {
++    final match = appRouter.configuration.findMatch(Uri.parse('/channels'));
++
++    expect(match.isError, isFalse);
++    expect(match.error, isNull);
++    expect(match.uri.path, '/channels');
++    expect(match.matches, isNotEmpty);
++  });
++
++  test('GoRouter resolves /channels/:channelId without a GoException', () {
++    final match = appRouter.configuration.findMatch(
++      Uri.parse('/channels/11111111-1111-1111-1111-111111111111'),
++    );
++
++    expect(match.isError, isFalse);
++    expect(match.error, isNull);
++    expect(
++      match.uri.path,
++      '/channels/11111111-1111-1111-1111-111111111111',
++    );
++    expect(match.matches, isNotEmpty);
++  });
++
+   test('unregistered locations still surface as match errors', () {
+     final match = appRouter.configuration.findMatch(
+       Uri.parse('/definitely-not-registered'),
+diff --git a/test/chat_bloc_test.dart b/test/chat_bloc_test.dart
+new file mode 100644
+index 0000000..49c7d37
+--- /dev/null
++++ b/test/chat_bloc_test.dart
+@@ -0,0 +1,240 @@
++import 'dart:async';
++
++import 'package:flutter_test/flutter_test.dart';
++
++import 'package:ultimate_solution_mobile/core/errors/failures.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/entities/chat_channel.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/entities/chat_message.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/entities/chat_realtime_events.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/entities/message_read.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/repositories/chat_realtime_repository.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/repositories/chat_repository.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/usecases/get_channels_use_case.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/usecases/get_messages_use_case.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/usecases/send_message_use_case.dart';
++import 'package:ultimate_solution_mobile/features/chat/presentation/bloc/channels_bloc.dart';
++import 'package:ultimate_solution_mobile/features/chat/presentation/bloc/chat_conversation_bloc.dart';
++
++void main() {
++  final channel = ChatChannel(
++    id: 'channel-1',
++    name: 'Release Planning',
++    type: ChatChannelType.group,
++    createdByUserId: 'user-1',
++    createdAtUtc: DateTime.utc(2026),
++    isArchived: false,
++    members: const [],
++  );
++
++  final message = ChatMessage(
++    id: 'message-1',
++    channelId: 'channel-1',
++    senderUserId: 'user-1',
++    body: 'Hello',
++    createdAtUtc: DateTime.utc(2026, 1, 2),
++  );
++
++  test('ChannelsBloc emits loaded channels after successful fetch', () async {
++    final repository = _FakeChatRepository(channels: [channel]);
++    final bloc = ChannelsBloc(GetChannelsUseCase(repository));
++    addTearDown(bloc.close);
++
++    final states = <ChannelsState>[];
++    final subscription = bloc.stream.listen(states.add);
++    addTearDown(subscription.cancel);
++
++    bloc.add(const ChannelsLoadRequested());
++    await Future<void>.delayed(Duration.zero);
++    await Future<void>.delayed(Duration.zero);
++
++    expect(states, hasLength(2));
++    expect(states.first, isA<ChannelsLoading>());
++    expect(states.last, isA<ChannelsLoaded>());
++    expect((states.last as ChannelsLoaded).channels.first.name, channel.name);
++  });
++
++  test('ChatConversationBloc loads messages and merges send result', () async {
++    final repository = _FakeChatRepository(messages: [message]);
++    final realtime = _FakeChatRealtimeRepository();
++    final bloc = ChatConversationBloc(
++      GetMessagesUseCase(repository),
++      SendMessageUseCase(repository),
++      realtime,
++    );
++    addTearDown(bloc.close);
++
++    final states = <ChatConversationState>[];
++    final subscription = bloc.stream.listen(states.add);
++    addTearDown(subscription.cancel);
++
++    bloc.add(const ChatConversationStarted('channel-1'));
++    await Future<void>.delayed(Duration.zero);
++    await Future<void>.delayed(Duration.zero);
++
++    expect(states.any((state) => state is ChatConversationReady), isTrue);
++    expect(realtime.connectCalled, isTrue);
++    expect(realtime.subscribedChannelId, 'channel-1');
++
++    bloc.add(const ChatMessageSendRequested('Follow up'));
++    await Future<void>.delayed(Duration.zero);
++    await Future<void>.delayed(Duration.zero);
++
++    final ready = states.whereType<ChatConversationReady>().last;
++    expect(ready.messages.any((item) => item.body == 'Follow up'), isTrue);
++  });
++
++  test('ChatConversationBloc appends realtime messageCreated events', () async {
++    final repository = _FakeChatRepository(messages: const []);
++    final realtime = _FakeChatRealtimeRepository();
++    final bloc = ChatConversationBloc(
++      GetMessagesUseCase(repository),
++      SendMessageUseCase(repository),
++      realtime,
++    );
++    addTearDown(bloc.close);
++
++    final states = <ChatConversationState>[];
++    final subscription = bloc.stream.listen(states.add);
++    addTearDown(subscription.cancel);
++
++    bloc.add(const ChatConversationStarted('channel-1'));
++    await Future<void>.delayed(Duration.zero);
++    await Future<void>.delayed(Duration.zero);
++
++    realtime.emitMessageCreated(message);
++    await Future<void>.delayed(Duration.zero);
++    await Future<void>.delayed(Duration.zero);
++
++    final ready = states.whereType<ChatConversationReady>().last;
++    expect(ready.messages, hasLength(1));
++    expect(ready.messages.first.id, 'message-1');
++  });
++}
++
++final class _FakeChatRepository implements ChatRepository {
++  _FakeChatRepository({
++    this.channels = const [],
++    this.messages = const [],
++  });
++
++  final List<ChatChannel> channels;
++  final List<ChatMessage> messages;
++
++  @override
++  Future<({List<ChatChannel>? channels, Failure? failure})> getChannels() async =>
++      (channels: channels, failure: null);
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> getChannel(
++    String channelId,
++  ) async => (channel: channels.firstOrNull, failure: null);
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> createChannel({
++    required ChatChannelType type,
++    String? name,
++    required List<String> memberIds,
++  }) async => (channel: channels.firstOrNull, failure: null);
++
++  @override
++  Future<({List<ChatMessage>? messages, Failure? failure})> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  }) async => (messages: messages, failure: null);
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> sendMessage({
++    required String channelId,
++    required String body,
++  }) async => (
++    message: ChatMessage(
++      id: 'message-sent',
++      channelId: channelId,
++      senderUserId: 'user-1',
++      body: body,
++      createdAtUtc: DateTime.utc(2026, 1, 3),
++    ),
++    failure: null,
++  );
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> editMessage({
++    required String messageId,
++    required String body,
++  }) async => (message: null, failure: const UnknownFailure());
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> deleteMessage(
++    String messageId,
++  ) async => (message: null, failure: const UnknownFailure());
++
++  @override
++  Future<({MessageRead? read, Failure? failure})> markMessageRead(
++    String messageId,
++  ) async => (read: null, failure: const UnknownFailure());
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> addMember({
++    required String channelId,
++    required String userId,
++  }) async => (channel: null, failure: const UnknownFailure());
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> removeMember({
++    required String channelId,
++    required String userId,
++  }) async => (channel: null, failure: const UnknownFailure());
++}
++
++final class _FakeChatRealtimeRepository implements ChatRealtimeRepository {
++  final _messageCreated = StreamController<ChatMessage>.broadcast();
++  final _messageUpdated = StreamController<ChatMessage>.broadcast();
++  final _messageDeleted = StreamController<ChatMessage>.broadcast();
++  final _typingChanged = StreamController<TypingChangedEvent>.broadcast();
++  final _presenceChanged = StreamController<PresenceChangedEvent>.broadcast();
++
++  bool connectCalled = false;
++  String? subscribedChannelId;
++
++  void emitMessageCreated(ChatMessage message) {
++    _messageCreated.add(message);
++  }
++
++  @override
++  Future<void> connect() async {
++    connectCalled = true;
++  }
++
++  @override
++  Future<void> disconnect() async {}
++
++  @override
++  Future<void> subscribeChannel(String channelId) async {
++    subscribedChannelId = channelId;
++  }
++
++  @override
++  Future<void> unsubscribeChannel(String channelId) async {}
++
++  @override
++  Future<void> startTyping(String channelId) async {}
++
++  @override
++  Future<void> stopTyping(String channelId) async {}
++
++  @override
++  Stream<ChatMessage> get messageCreated => _messageCreated.stream;
++
++  @override
++  Stream<ChatMessage> get messageUpdated => _messageUpdated.stream;
++
++  @override
++  Stream<ChatMessage> get messageDeleted => _messageDeleted.stream;
++
++  @override
++  Stream<TypingChangedEvent> get typingChanged => _typingChanged.stream;
++
++  @override
++  Stream<PresenceChangedEvent> get presenceChanged => _presenceChanged.stream;
++}
+diff --git a/test/chat_repository_test.dart b/test/chat_repository_test.dart
+new file mode 100644
+index 0000000..eafec44
+--- /dev/null
++++ b/test/chat_repository_test.dart
+@@ -0,0 +1,197 @@
++import 'package:dio/dio.dart';
++import 'package:flutter_test/flutter_test.dart';
++
++import 'package:ultimate_solution_mobile/core/errors/failures.dart';
++import 'package:ultimate_solution_mobile/features/chat/data/datasources/chat_remote_data_source.dart';
++import 'package:ultimate_solution_mobile/features/chat/data/models/chat_models.dart';
++import 'package:ultimate_solution_mobile/features/chat/data/repositories/chat_repository_impl.dart';
++
++void main() {
++  test('maps channel list models to entities', () async {
++    final remote = _FakeChatRemoteDataSource();
++    final repository = ChatRepositoryImpl(remote);
++
++    final result = await repository.getChannels();
++
++    expect(result.failure, isNull);
++    expect(result.channels, isNotNull);
++    expect(result.channels, hasLength(1));
++    expect(result.channels!.first.name, 'Release Planning');
++    expect(result.channels!.first.members, hasLength(1));
++  });
++
++  test('surfaces Failure embedded in DioException.error instead of UnknownFailure', () async {
++    const mapped = NetworkFailure('Unable to reach the server.');
++    final remote = _ThrowingChatRemoteDataSource(
++      DioException(
++        requestOptions: RequestOptions(path: '/api/v1/channels'),
++        type: DioExceptionType.connectionError,
++        error: mapped,
++      ),
++    );
++    final repository = ChatRepositoryImpl(remote);
++
++    final result = await repository.getChannels();
++
++    expect(result.channels, isNull);
++    expect(result.failure, same(mapped));
++    expect(result.failure, isNot(isA<UnknownFailure>()));
++  });
++
++  test('sendMessage returns created message entity', () async {
++    final remote = _FakeChatRemoteDataSource();
++    final repository = ChatRepositoryImpl(remote);
++
++    final result = await repository.sendMessage(
++      channelId: 'channel-1',
++      body: 'Hello',
++    );
++
++    expect(result.failure, isNull);
++    expect(result.message?.body, 'Hello');
++    expect(result.message?.channelId, 'channel-1');
++    expect(result.message?.senderUserId, 'user-1');
++  });
++}
++
++final class _FakeChatRemoteDataSource implements ChatRemoteDataSource {
++  ChatChannelModel get _channel => ChatChannelModel(
++    id: 'channel-1',
++    name: 'Release Planning',
++    type: 2,
++    createdByUserId: 'user-1',
++    createdAtUtc: DateTime.utc(2026, 1, 1),
++    isArchived: false,
++    members: [
++      ChannelMembershipModel(
++        userId: 'user-2',
++        role: 1,
++        joinedAtUtc: DateTime.utc(2026, 1, 1),
++      ),
++    ],
++  );
++
++  ChatMessageModel get _message => ChatMessageModel(
++    id: 'message-1',
++    channelId: 'channel-1',
++    senderUserId: 'user-1',
++    body: 'Hello',
++    createdAtUtc: DateTime.utc(2026, 1, 2),
++  );
++
++  @override
++  Future<List<ChatChannelModel>> getChannels() async => [_channel];
++
++  @override
++  Future<ChatChannelModel> getChannel(String channelId) async => _channel;
++
++  @override
++  Future<ChatChannelModel> createChannel(
++    CreateChannelRequestModel request,
++  ) async => _channel;
++
++  @override
++  Future<List<ChatMessageModel>> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  }) async => [_message];
++
++  @override
++  Future<ChatMessageModel> sendMessage({
++    required String channelId,
++    required SendChatMessageRequestModel request,
++  }) async => ChatMessageModel(
++    id: 'message-1',
++    channelId: channelId,
++    senderUserId: 'user-1',
++    body: request.body,
++    createdAtUtc: DateTime.utc(2026, 1, 2),
++  );
++
++  @override
++  Future<ChatMessageModel> editMessage({
++    required String messageId,
++    required UpdateChatMessageRequestModel request,
++  }) async => _message;
++
++  @override
++  Future<ChatMessageModel> deleteMessage(String messageId) async => _message;
++
++  @override
++  Future<MessageReadModel> markMessageRead(String messageId) async =>
++      MessageReadModel(
++        channelId: 'channel-1',
++        userId: 'user-1',
++        lastReadMessageId: messageId,
++        lastReadAtUtc: DateTime.utc(2026, 1, 3),
++      );
++
++  @override
++  Future<ChatChannelModel> addMember({
++    required String channelId,
++    required AddChannelMemberRequestModel request,
++  }) async => _channel;
++
++  @override
++  Future<ChatChannelModel> removeMember({
++    required String channelId,
++    required String userId,
++  }) async => _channel;
++}
++
++final class _ThrowingChatRemoteDataSource implements ChatRemoteDataSource {
++  _ThrowingChatRemoteDataSource(this._error);
++
++  final Object _error;
++
++  Never _throw() => throw _error;
++
++  @override
++  Future<List<ChatChannelModel>> getChannels() async => _throw();
++
++  @override
++  Future<ChatChannelModel> getChannel(String channelId) async => _throw();
++
++  @override
++  Future<ChatChannelModel> createChannel(
++    CreateChannelRequestModel request,
++  ) async => _throw();
++
++  @override
++  Future<List<ChatMessageModel>> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  }) async => _throw();
++
++  @override
++  Future<ChatMessageModel> sendMessage({
++    required String channelId,
++    required SendChatMessageRequestModel request,
++  }) async => _throw();
++
++  @override
++  Future<ChatMessageModel> editMessage({
++    required String messageId,
++    required UpdateChatMessageRequestModel request,
++  }) async => _throw();
++
++  @override
++  Future<ChatMessageModel> deleteMessage(String messageId) async => _throw();
++
++  @override
++  Future<MessageReadModel> markMessageRead(String messageId) async => _throw();
++
++  @override
++  Future<ChatChannelModel> addMember({
++    required String channelId,
++    required AddChannelMemberRequestModel request,
++  }) async => _throw();
++
++  @override
++  Future<ChatChannelModel> removeMember({
++    required String channelId,
++    required String userId,
++  }) async => _throw();
++}
+diff --git a/test/chat_usecases_test.dart b/test/chat_usecases_test.dart
+new file mode 100644
+index 0000000..cc3d80b
+--- /dev/null
++++ b/test/chat_usecases_test.dart
+@@ -0,0 +1,128 @@
++import 'package:flutter_test/flutter_test.dart';
++
++import 'package:ultimate_solution_mobile/core/errors/failures.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/entities/chat_channel.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/entities/chat_message.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/entities/message_read.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/repositories/chat_repository.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/usecases/get_channels_use_case.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/usecases/get_messages_use_case.dart';
++import 'package:ultimate_solution_mobile/features/chat/domain/usecases/send_message_use_case.dart';
++
++void main() {
++  test('GetChannelsUseCase delegates to ChatRepository only', () async {
++    final repository = _RecordingChatRepository();
++    final result = await GetChannelsUseCase(repository)();
++
++    expect(result.channels, isEmpty);
++    expect(repository.getChannelsCalled, isTrue);
++  });
++
++  test('GetMessagesUseCase passes channelId and pagination args', () async {
++    final repository = _RecordingChatRepository();
++    await GetMessagesUseCase(repository)(
++      channelId: 'channel-1',
++      search: 'approved',
++      take: 10,
++    );
++
++    expect(repository.lastMessagesChannelId, 'channel-1');
++    expect(repository.lastSearch, 'approved');
++    expect(repository.lastTake, 10);
++  });
++
++  test('SendMessageUseCase delegates body to ChatRepository', () async {
++    final repository = _RecordingChatRepository();
++    final result = await SendMessageUseCase(repository)(
++      channelId: 'channel-1',
++      body: 'Hello',
++    );
++
++    expect(result.message?.body, 'Hello');
++    expect(repository.lastSendBody, 'Hello');
++  });
++}
++
++final class _RecordingChatRepository implements ChatRepository {
++  bool getChannelsCalled = false;
++  String? lastMessagesChannelId;
++  String? lastSearch;
++  int? lastTake;
++  String? lastSendBody;
++
++  @override
++  Future<({List<ChatChannel>? channels, Failure? failure})> getChannels() async {
++    getChannelsCalled = true;
++    return (channels: const <ChatChannel>[], failure: null);
++  }
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> getChannel(
++    String channelId,
++  ) async => (channel: null, failure: const UnknownFailure());
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> createChannel({
++    required ChatChannelType type,
++    String? name,
++    required List<String> memberIds,
++  }) async => (channel: null, failure: const UnknownFailure());
++
++  @override
++  Future<({List<ChatMessage>? messages, Failure? failure})> getMessages({
++    required String channelId,
++    String? search,
++    int take = 50,
++  }) async {
++    lastMessagesChannelId = channelId;
++    lastSearch = search;
++    lastTake = take;
++    return (messages: const <ChatMessage>[], failure: null);
++  }
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> sendMessage({
++    required String channelId,
++    required String body,
++  }) async {
++    lastSendBody = body;
++    return (
++      message: ChatMessage(
++        id: 'm1',
++        channelId: channelId,
++        senderUserId: 'u1',
++        body: body,
++        createdAtUtc: DateTime.utc(2026),
++      ),
++      failure: null,
++    );
++  }
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> editMessage({
++    required String messageId,
++    required String body,
++  }) async => (message: null, failure: const UnknownFailure());
++
++  @override
++  Future<({ChatMessage? message, Failure? failure})> deleteMessage(
++    String messageId,
++  ) async => (message: null, failure: const UnknownFailure());
++
++  @override
++  Future<({MessageRead? read, Failure? failure})> markMessageRead(
++    String messageId,
++  ) async => (read: null, failure: const UnknownFailure());
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> addMember({
++    required String channelId,
++    required String userId,
++  }) async => (channel: null, failure: const UnknownFailure());
++
++  @override
++  Future<({ChatChannel? channel, Failure? failure})> removeMember({
++    required String channelId,
++    required String userId,
++  }) async => (channel: null, failure: const UnknownFailure());
++}
+diff --git a/test/live_hub_verify_test.dart b/test/live_hub_verify_test.dart
+new file mode 100644
+index 0000000..f61a7b0
+--- /dev/null
++++ b/test/live_hub_verify_test.dart
+@@ -0,0 +1,215 @@
++import 'dart:async';
++import 'dart:convert';
++import 'dart:io';
++
++import 'package:dio/dio.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:signalr_netcore/signalr_client.dart';
++
++/// Live Render ChatHub verification (not a unit fake).
++/// Run:
++/// flutter test test/live_hub_verify_test.dart --dart-define=LIVE_HUB=true --dart-define=API_BASE_URL=https://ultimatesolution-communication-backend.onrender.com
++void main() {
++  const liveHubEnabled = bool.fromEnvironment('LIVE_HUB', defaultValue: false);
++
++  test(
++    'Live Hub: messageCreated arrives over SignalR on Render',
++    () async {
++      const baseUrl = String.fromEnvironment(
++        'API_BASE_URL',
++        defaultValue: 'https://ultimatesolution-communication-backend.onrender.com',
++      );
++      final password = Platform.environment['LIVE_HUB_PASSWORD'] ?? 'P@ssw0rd123!';
++      final listenerEmail =
++          Platform.environment['LIVE_HUB_EMAIL'] ?? 'test@example.com';
++
++      stdout.writeln('[LIVE_HUB] baseUrl=$baseUrl');
++      stdout.writeln('[LIVE_HUB] listener=$listenerEmail');
++
++      final dio = Dio(
++        BaseOptions(
++          baseUrl: baseUrl,
++          connectTimeout: const Duration(seconds: 60),
++          receiveTimeout: const Duration(seconds: 60),
++          headers: const {
++            'Accept': 'application/json',
++            'Content-Type': 'application/json',
++          },
++        ),
++      );
++
++      Future<Map<String, dynamic>> login(String email, String pwd) async {
++        final response = await dio.post<Map<String, dynamic>>(
++          '/api/v1/auth/login',
++          data: {'email': email, 'password': pwd},
++        );
++        final body = response.data ?? const <String, dynamic>{};
++        if (body['success'] != true || body['data'] is! Map<String, dynamic>) {
++          throw StateError(
++            'Login failed for $email: status=${response.statusCode} body=${jsonEncode(body)}',
++          );
++        }
++        return body['data']! as Map<String, dynamic>;
++      }
++
++      Future<String> profileUserId(String accessToken) async {
++        final response = await dio.get<Map<String, dynamic>>(
++          '/api/v1/profile',
++          options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
++        );
++        final data = response.data?['data'];
++        if (data is! Map<String, dynamic> || data['userId'] is! String) {
++          throw StateError('Profile missing userId: ${response.data}');
++        }
++        return data['userId'] as String;
++      }
++
++      // 1) Login listener (real account requested by reviewer).
++      Map<String, dynamic> listenerSession;
++      try {
++        listenerSession = await login(listenerEmail, password);
++      } catch (error) {
++        // If the seeded account is missing on Render, register it once.
++        stdout.writeln('[LIVE_HUB] login failed, attempting register: $error');
++        final register = await dio.post<Map<String, dynamic>>(
++          '/api/v1/auth/register',
++          data: {
++            'email': listenerEmail,
++            'password': password,
++            'displayName': 'Live Hub Listener',
++          },
++        );
++        stdout.writeln(
++          '[LIVE_HUB] register status=${register.statusCode} body=${register.data}',
++        );
++        listenerSession = await login(listenerEmail, password);
++      }
++      final listenerToken = listenerSession['accessToken'] as String;
++      final listenerId = await profileUserId(listenerToken);
++      stdout.writeln('[LIVE_HUB] listenerId=$listenerId');
++
++      // 2) Register a peer sender so we can prove cross-party SignalR delivery.
++      final peerEmail =
++          'live.hub.peer.${DateTime.now().millisecondsSinceEpoch}@example.com';
++      final peerPassword = 'StrongPassword!2026';
++      final peerRegister = await dio.post<Map<String, dynamic>>(
++        '/api/v1/auth/register',
++        data: {
++          'email': peerEmail,
++          'password': peerPassword,
++          'displayName': 'Live Hub Peer',
++        },
++      );
++      if (peerRegister.statusCode != 201 &&
++          peerRegister.data?['success'] != true) {
++        throw StateError(
++          'Peer register failed: status=${peerRegister.statusCode} body=${peerRegister.data}',
++        );
++      }
++      final peerSession = await login(peerEmail, peerPassword);
++      final peerToken = peerSession['accessToken'] as String;
++      final peerId = await profileUserId(peerToken);
++      stdout.writeln('[LIVE_HUB] peerId=$peerId email=$peerEmail');
++
++      // 3) Listener creates a group channel that includes the peer.
++      final createChannel = await dio.post<Map<String, dynamic>>(
++        '/api/v1/channels',
++        data: {
++          'type': 2,
++          'name': 'Live Hub Verify ${DateTime.now().toUtc().toIso8601String()}',
++          'memberIds': [peerId],
++        },
++        options: Options(headers: {'Authorization': 'Bearer $listenerToken'}),
++      );
++      final channelData = createChannel.data?['data'];
++      if (channelData is! Map<String, dynamic> || channelData['id'] is! String) {
++        throw StateError(
++          'Create channel failed: status=${createChannel.statusCode} body=${createChannel.data}',
++        );
++      }
++      final channelId = channelData['id'] as String;
++      stdout.writeln('[LIVE_HUB] channelId=$channelId');
++
++      // 4) Connect ChatHub as listener with JWT (same path as app SignalR client).
++      final messageCreated = Completer<Map<String, dynamic>>();
++      final hubUrl = '$baseUrl/hubs/chat';
++      final hub = HubConnectionBuilder()
++          .withUrl(
++            hubUrl,
++            options: HttpConnectionOptions(
++              accessTokenFactory: () async => listenerToken,
++            ),
++          )
++          .withAutomaticReconnect()
++          .build();
++
++      hub.on('messageCreated', (args) {
++        stdout.writeln('[LIVE_HUB] messageCreated raw args=$args');
++        if (args == null || args.isEmpty) {
++          return;
++        }
++        final first = args.first;
++        Map<String, dynamic>? json;
++        if (first is Map<String, dynamic>) {
++          json = first;
++        } else if (first is Map) {
++          json = Map<String, dynamic>.from(first);
++        }
++        if (json != null && !messageCreated.isCompleted) {
++          messageCreated.complete(json);
++        }
++      });
++
++      stdout.writeln('[LIVE_HUB] connecting hub $hubUrl');
++      await hub.start();
++      stdout.writeln('[LIVE_HUB] hub state=${hub.state}');
++      await hub.invoke('SubscribeChannel', args: <Object>[channelId]);
++      stdout.writeln('[LIVE_HUB] subscribed to channel');
++
++      // 5) Peer sends a REST message — listener must receive it via SignalR only.
++      final marker =
++          'LIVE_HUB_MARKER_${DateTime.now().toUtc().millisecondsSinceEpoch}';
++      final sendStarted = DateTime.now().toUtc();
++      final send = await dio.post<Map<String, dynamic>>(
++        '/api/v1/channels/$channelId/messages',
++        data: {'body': marker},
++        options: Options(headers: {'Authorization': 'Bearer $peerToken'}),
++      );
++      final sent = send.data?['data'];
++      if (sent is! Map<String, dynamic> || sent['id'] is! String) {
++        throw StateError(
++          'Peer send failed: status=${send.statusCode} body=${send.data}',
++        );
++      }
++      final sentId = sent['id'] as String;
++      stdout.writeln('[LIVE_HUB] peer sent messageId=$sentId body=$marker');
++
++      Map<String, dynamic> event;
++      try {
++        event = await messageCreated.future.timeout(const Duration(seconds: 20));
++      } on TimeoutException {
++        await hub.stop();
++        fail(
++          'Timed out waiting for SignalR messageCreated on $hubUrl after peer REST send '
++          '(messageId=$sentId, marker=$marker). Hub did not deliver realtime event.',
++        );
++      }
++
++      final elapsedMs =
++          DateTime.now().toUtc().difference(sendStarted).inMilliseconds;
++      stdout.writeln('[LIVE_HUB] received event=$event in ${elapsedMs}ms');
++
++      expect(event['id'], sentId);
++      expect(event['channelId'], channelId);
++      expect(event['body'], marker);
++      expect(event['senderUserId'], peerId);
++
++      await hub.stop();
++      stdout.writeln('[LIVE_HUB] SUCCESS realtime delivery confirmed');
++    },
++    skip: liveHubEnabled
++        ? false
++        : 'Opt-in with --dart-define=LIVE_HUB=true',
++    timeout: const Timeout(Duration(minutes: 3)),
++  );
++}

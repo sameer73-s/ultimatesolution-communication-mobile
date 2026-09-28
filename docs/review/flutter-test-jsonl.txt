@@ -1,0 +1,94 @@
+{"protocolVersion":"0.1.1","runnerVersion":null,"pid":12468,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"suite":{"id":2,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_bloc_test.dart"},"type":"suite","time":4}
+{"test":{"id":3,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_bloc_test.dart","suiteID":2,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4}
+{"suite":{"id":4,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart"},"type":"suite","time":4}
+{"test":{"id":5,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart","suiteID":4,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4}
+{"suite":{"id":6,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart"},"type":"suite","time":4}
+{"test":{"id":7,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart","suiteID":6,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4}
+{"suite":{"id":8,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart"},"type":"suite","time":4}
+{"test":{"id":9,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart","suiteID":8,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4}
+{"suite":{"id":10,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart"},"type":"suite","time":4}
+{"test":{"id":11,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart","suiteID":10,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":4}
+{"suite":{"id":12,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart"},"type":"suite","time":4}
+{"test":{"id":13,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart","suiteID":12,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":5}
+{"suite":{"id":14,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart"},"type":"suite","time":5}
+{"test":{"id":15,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart","suiteID":14,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":5}
+{"count":9,"time":6,"type":"allSuites"}
+{"testID":3,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1912}
+{"group":{"id":16,"suiteID":2,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":null,"column":null,"url":null},"type":"group","time":1914}
+{"test":{"id":17,"name":"emits authenticated after successful login","suiteID":2,"groupIDs":[16],"metadata":{"skip":false,"skipReason":null},"line":20,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_bloc_test.dart"},"type":"testStart","time":1914}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1918}
+{"group":{"id":18,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":5,"line":null,"column":null,"url":null},"type":"group","time":1918}
+{"test":{"id":19,"name":"GoRouter resolves /login without a GoException","suiteID":0,"groupIDs":[18],"metadata":{"skip":false,"skipReason":null},"line":9,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart"},"type":"testStart","time":1919}
+{"testID":17,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1952}
+{"test":{"id":20,"name":"emits unauthenticated failure when refresh has no session","suiteID":2,"groupIDs":[16],"metadata":{"skip":false,"skipReason":null},"line":45,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_bloc_test.dart"},"type":"testStart","time":1952}
+{"testID":20,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1957}
+{"testID":19,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1966}
+{"test":{"id":21,"name":"GoRouter resolves /register without a GoException","suiteID":0,"groupIDs":[18],"metadata":{"skip":false,"skipReason":null},"line":18,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart"},"type":"testStart","time":1969}
+{"testID":21,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1974}
+{"test":{"id":22,"name":"GoRouter resolves /channels without a GoException","suiteID":0,"groupIDs":[18],"metadata":{"skip":false,"skipReason":null},"line":27,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart"},"type":"testStart","time":1974}
+{"testID":22,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1978}
+{"test":{"id":23,"name":"GoRouter resolves /channels/:channelId without a GoException","suiteID":0,"groupIDs":[18],"metadata":{"skip":false,"skipReason":null},"line":36,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart"},"type":"testStart","time":1978}
+{"suite":{"id":24,"platform":"vm","path":"D:/ultimate_team/project/ultimatesolution-communication-mobile/test/live_hub_verify_test.dart"},"type":"suite","time":1992}
+{"test":{"id":25,"name":"loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/live_hub_verify_test.dart","suiteID":24,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":1992}
+{"testID":23,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2001}
+{"test":{"id":26,"name":"unregistered locations still surface as match errors","suiteID":0,"groupIDs":[18],"metadata":{"skip":false,"skipReason":null},"line":50,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/app_router_test.dart"},"type":"testStart","time":2008}
+{"testID":26,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2012}
+{"testID":5,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2139}
+{"group":{"id":27,"suiteID":4,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":2139}
+{"test":{"id":28,"name":"persists access and refresh tokens and refreshes after repository recreation","suiteID":4,"groupIDs":[27],"metadata":{"skip":false,"skipReason":null},"line":11,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart"},"type":"testStart","time":2139}
+{"testID":28,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2158}
+{"test":{"id":29,"name":"surfaces Failure embedded in DioException.error instead of UnknownFailure","suiteID":4,"groupIDs":[27],"metadata":{"skip":false,"skipReason":null},"line":30,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart"},"type":"testStart","time":2159}
+{"testID":29,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2167}
+{"test":{"id":30,"name":"surfaces ApiFailure from DioException.error with backend message","suiteID":4,"groupIDs":[27],"metadata":{"skip":false,"skipReason":null},"line":52,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_repository_test.dart"},"type":"testStart","time":2167}
+{"testID":30,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2170}
+{"testID":7,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2204}
+{"group":{"id":31,"suiteID":6,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":null,"column":null,"url":null},"type":"group","time":2204}
+{"test":{"id":32,"name":"LoginUseCase delegates credentials to AuthRepository","suiteID":6,"groupIDs":[31],"metadata":{"skip":false,"skipReason":null},"line":19,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart"},"type":"testStart","time":2204}
+{"testID":32,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2222}
+{"test":{"id":33,"name":"RegisterUseCase delegates registration data to AuthRepository","suiteID":6,"groupIDs":[31],"metadata":{"skip":false,"skipReason":null},"line":32,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart"},"type":"testStart","time":2222}
+{"testID":33,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2225}
+{"test":{"id":34,"name":"RefreshSessionUseCase delegates refresh to AuthRepository","suiteID":6,"groupIDs":[31],"metadata":{"skip":false,"skipReason":null},"line":50,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart"},"type":"testStart","time":2225}
+{"testID":34,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2228}
+{"test":{"id":35,"name":"LogoutUseCase delegates logout to AuthRepository","suiteID":6,"groupIDs":[31],"metadata":{"skip":false,"skipReason":null},"line":59,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/auth_usecases_test.dart"},"type":"testStart","time":2229}
+{"testID":35,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2231}
+{"testID":9,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2421}
+{"group":{"id":36,"suiteID":8,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":2421}
+{"test":{"id":37,"name":"ChannelsBloc emits loaded channels after successful fetch","suiteID":8,"groupIDs":[36],"metadata":{"skip":false,"skipReason":null},"line":37,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart"},"type":"testStart","time":2421}
+{"testID":37,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2448}
+{"test":{"id":38,"name":"ChatConversationBloc loads messages and merges send result","suiteID":8,"groupIDs":[36],"metadata":{"skip":false,"skipReason":null},"line":56,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart"},"type":"testStart","time":2448}
+{"testID":38,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2458}
+{"test":{"id":39,"name":"ChatConversationBloc appends realtime messageCreated events","suiteID":8,"groupIDs":[36],"metadata":{"skip":false,"skipReason":null},"line":86,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_bloc_test.dart"},"type":"testStart","time":2459}
+{"testID":39,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2465}
+{"testID":11,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2537}
+{"group":{"id":40,"suiteID":10,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":2537}
+{"test":{"id":41,"name":"maps channel list models to entities","suiteID":10,"groupIDs":[40],"metadata":{"skip":false,"skipReason":null},"line":10,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart"},"type":"testStart","time":2537}
+{"testID":41,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2553}
+{"test":{"id":42,"name":"surfaces Failure embedded in DioException.error instead of UnknownFailure","suiteID":10,"groupIDs":[40],"metadata":{"skip":false,"skipReason":null},"line":23,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart"},"type":"testStart","time":2554}
+{"testID":42,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2561}
+{"test":{"id":43,"name":"sendMessage returns created message entity","suiteID":10,"groupIDs":[40],"metadata":{"skip":false,"skipReason":null},"line":41,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_repository_test.dart"},"type":"testStart","time":2562}
+{"testID":43,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2564}
+{"testID":13,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2650}
+{"group":{"id":44,"suiteID":12,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":2651}
+{"test":{"id":45,"name":"GetChannelsUseCase delegates to ChatRepository only","suiteID":12,"groupIDs":[44],"metadata":{"skip":false,"skipReason":null},"line":13,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart"},"type":"testStart","time":2651}
+{"testID":45,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2664}
+{"test":{"id":46,"name":"GetMessagesUseCase passes channelId and pagination args","suiteID":12,"groupIDs":[44],"metadata":{"skip":false,"skipReason":null},"line":21,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart"},"type":"testStart","time":2664}
+{"testID":46,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2667}
+{"test":{"id":47,"name":"SendMessageUseCase delegates body to ChatRepository","suiteID":12,"groupIDs":[44],"metadata":{"skip":false,"skipReason":null},"line":34,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/chat_usecases_test.dart"},"type":"testStart","time":2668}
+{"testID":47,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2670}
+{"testID":25,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2801}
+{"group":{"id":48,"suiteID":24,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":null,"column":null,"url":null},"type":"group","time":2802}
+{"test":{"id":49,"name":"Live Hub: messageCreated arrives over SignalR on Render","suiteID":24,"groupIDs":[48],"metadata":{"skip":true,"skipReason":"Opt-in with --dart-define=LIVE_HUB=true"},"line":15,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/live_hub_verify_test.dart"},"type":"testStart","time":2802}
+{"testID":49,"messageType":"skip","message":"Skip: Opt-in with --dart-define=LIVE_HUB=true","type":"print","time":2802}
+{"testID":49,"result":"success","skipped":true,"hidden":false,"type":"testDone","time":2802}
+{"testID":15,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":2823}
+{"group":{"id":50,"suiteID":14,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":null,"column":null,"url":null},"type":"group","time":2824}
+{"test":{"id":51,"name":"registers ApiClient and Dio through get_it","suiteID":14,"groupIDs":[50],"metadata":{"skip":false,"skipReason":null},"line":17,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart"},"type":"testStart","time":2824}
+{"testID":51,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2864}
+{"test":{"id":52,"name":"attaches a bearer token through the network interceptor","suiteID":14,"groupIDs":[50],"metadata":{"skip":false,"skipReason":null},"line":24,"column":3,"url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart"},"type":"testStart","time":2864}
+{"testID":52,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2890}
+{"test":{"id":53,"name":"exposes the placeholder theme centrally","suiteID":14,"groupIDs":[50],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":35,"root_column":3,"root_url":"file:///D:/ultimate_team/project/ultimatesolution-communication-mobile/test/core_setup_test.dart"},"type":"testStart","time":2891}
+{"testID":53,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":3292}
+{"success":true,"type":"done","time":3320}

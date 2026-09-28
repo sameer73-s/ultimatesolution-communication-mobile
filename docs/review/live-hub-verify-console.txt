@@ -1,0 +1,15 @@
+00:00 +0: loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/live_hub_verify_test.dart
+00:00 +0: Live Hub: messageCreated arrives over SignalR on Render
+Shell: [LIVE_HUB] baseUrl=https://ultimatesolution-communication-backend.onrender.com
+Shell: [LIVE_HUB] listener=test@example.com
+Shell: [LIVE_HUB] listenerId=34177dcf-d422-4bb8-a279-a6d0b03808d8
+Shell: [LIVE_HUB] peerId=62c6ce95-c6ac-4323-8858-650003c735ab email=live.hub.peer.1788179952516@example.com
+Shell: [LIVE_HUB] channelId=02bd316c-0f80-4065-9a27-f439e5462ac6
+Shell: [LIVE_HUB] connecting hub https://ultimatesolution-communication-backend.onrender.com/hubs/chat
+Shell: [LIVE_HUB] hub state=HubConnectionState.Connected
+Shell: [LIVE_HUB] subscribed to channel
+Shell: [LIVE_HUB] messageCreated raw args=[{id: ce407db0-405f-4d6c-b981-67be90335916, channelId: 02bd316c-0f80-4065-9a27-f439e5462ac6, senderUserId: 62c6ce95-c6ac-4323-8858-650003c735ab, body: LIVE_HUB_MARKER_1788179958828, createdAtUtc: 2026-08-31T12:39:17.7785204+00:00, editedAtUtc: null, deletedAtUtc: null}]
+Shell: [LIVE_HUB] peer sent messageId=ce407db0-405f-4d6c-b981-67be90335916 body=LIVE_HUB_MARKER_1788179958828
+Shell: [LIVE_HUB] received event={id: ce407db0-405f-4d6c-b981-67be90335916, channelId: 02bd316c-0f80-4065-9a27-f439e5462ac6, senderUserId: 62c6ce95-c6ac-4323-8858-650003c735ab, body: LIVE_HUB_MARKER_1788179958828, createdAtUtc: 2026-08-31T12:39:17.7785204+00:00, editedAtUtc: null, deletedAtUtc: null} in 496ms
+Shell: [LIVE_HUB] SUCCESS realtime delivery confirmed
+00:10 +1: All tests passed!

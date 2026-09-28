@@ -1,0 +1,124 @@
+# WBS 4.3 - Test Results Summary
+
+- **Branch:** `feature/4.3-flutter-chat`
+- **PR:** https://github.com/sameer73-s/ultimatesolution-communication-mobile/pull/5
+- **Generated (UTC):** `2026-08-31T12:48:38Z`
+- **Command:** `flutter test --reporter json`
+- **Totals:** 27 tests - Passed=26, Skipped=1, Failed=0
+
+## flutter analyze
+
+```
+Analyzing ultimatesolution-communication-mobile...              
+
+No issues found! (ran in 1.6s)
+```
+
+## Automated tests
+
+| Full name | Result | Time |
+|---|---|---:|
+| `app_router_test / GoRouter resolves /channels without a GoException` | Passed | 4ms |
+| `app_router_test / GoRouter resolves /channels/:channelId without a GoException` | Passed | 23ms |
+| `app_router_test / GoRouter resolves /login without a GoException` | Passed | 47ms |
+| `app_router_test / GoRouter resolves /register without a GoException` | Passed | 5ms |
+| `app_router_test / unregistered locations still surface as match errors` | Passed | 4ms |
+| `auth_bloc_test / emits authenticated after successful login` | Passed | 38ms |
+| `auth_bloc_test / emits unauthenticated failure when refresh has no session` | Passed | 5ms |
+| `auth_repository_test / persists access and refresh tokens and refreshes after repository recreation` | Passed | 19ms |
+| `auth_repository_test / surfaces ApiFailure from DioException.error with backend message` | Passed | 3ms |
+| `auth_repository_test / surfaces Failure embedded in DioException.error instead of UnknownFailure` | Passed | 8ms |
+| `auth_usecases_test / LoginUseCase delegates credentials to AuthRepository` | Passed | 18ms |
+| `auth_usecases_test / LogoutUseCase delegates logout to AuthRepository` | Passed | 2ms |
+| `auth_usecases_test / RefreshSessionUseCase delegates refresh to AuthRepository` | Passed | 3ms |
+| `auth_usecases_test / RegisterUseCase delegates registration data to AuthRepository` | Passed | 3ms |
+| `chat_bloc_test / ChannelsBloc emits loaded channels after successful fetch` | Passed | 27ms |
+| `chat_bloc_test / ChatConversationBloc appends realtime messageCreated events` | Passed | 6ms |
+| `chat_bloc_test / ChatConversationBloc loads messages and merges send result` | Passed | 10ms |
+| `chat_repository_test / maps channel list models to entities` | Passed | 16ms |
+| `chat_repository_test / sendMessage returns created message entity` | Passed | 2ms |
+| `chat_repository_test / surfaces Failure embedded in DioException.error instead of UnknownFailure` | Passed | 7ms |
+| `chat_usecases_test / GetChannelsUseCase delegates to ChatRepository only` | Passed | 13ms |
+| `chat_usecases_test / GetMessagesUseCase passes channelId and pagination args` | Passed | 3ms |
+| `chat_usecases_test / SendMessageUseCase delegates body to ChatRepository` | Passed | 2ms |
+| `core_setup_test / attaches a bearer token through the network interceptor` | Passed | 26ms |
+| `core_setup_test / exposes the placeholder theme centrally` | Passed | 401ms |
+| `core_setup_test / registers ApiClient and Dio through get_it` | Passed | 40ms |
+| `live_hub_verify_test / Live Hub: messageCreated arrives over SignalR on Render` | Skipped | 0ms |
+
+## Live Hub Verification
+
+### Target
+
+- **API:** `https://ultimatesolution-communication-backend.onrender.com`
+- **Hub:** `https://ultimatesolution-communication-backend.onrender.com/hubs/chat`
+- **Listener account:** `test@example.com` (requested)
+- **Peer sender:** temporary registered account `live.hub.peer.*@example.com` (second concurrent party required for cross-user realtime proof)
+- **Client stack:** same as the Flutter feature - `signalr_netcore` + JWT `accessTokenFactory` + REST send
+
+### Method
+
+1. Login as `test@example.com` against Render.
+2. Register a peer user and create a Group channel containing both.
+3. Connect ChatHub as the listener and invoke `SubscribeChannel(channelId)`.
+4. Peer sends a REST message; listener waits **only** on SignalR `messageCreated` (no REST poll/refresh).
+5. Assert event `id` / `channelId` / `body` / `senderUserId` match the peer REST response.
+
+Command:
+
+```
+flutter test test/live_hub_verify_test.dart --dart-define=LIVE_HUB=true --dart-define=API_BASE_URL=https://ultimatesolution-communication-backend.onrender.com
+```
+
+### Result: **Passed**
+
+- Hub connected: `HubConnectionState.Connected`
+- Listener userId: `34177dcf-d422-4bb8-a279-a6d0b03808d8`
+- Peer userId: `62c6ce95-c6ac-4323-8858-650003c735ab`
+- ChannelId: `02bd316c-0f80-4065-9a27-f439e5462ac6`
+- MessageId: `ce407db0-405f-4d6c-b981-67be90335916`
+- Marker body: `LIVE_HUB_MARKER_1788179958828`
+- SignalR delivery latency after peer REST send: **496ms**
+- Conclusion: peer message arrived on the listener hub via `messageCreated` without REST refresh.
+
+### Constraint documented (not skipped silently)
+
+Proving cross-party realtime delivery requires **two authenticated actors**. A single Flutter UI session cannot both listen and independently send as a different user. The live check therefore used:
+- Listener = `test@example.com` on ChatHub (same package/URL/token mechanism as the app)
+- Sender = separate peer account via REST
+
+That is the real Render hub path, not unit fakes. Dual-window Flutter UI would only wrap the same SignalR client.
+
+### Raw console
+
+```
+00:00 +0: loading D:/ultimate_team/project/ultimatesolution-communication-mobile/test/live_hub_verify_test.dart
+
+00:00 +0: Live Hub: messageCreated arrives over SignalR on Render
+
+Shell: [LIVE_HUB] baseUrl=https://ultimatesolution-communication-backend.onrender.com
+
+Shell: [LIVE_HUB] listener=test@example.com
+
+Shell: [LIVE_HUB] listenerId=34177dcf-d422-4bb8-a279-a6d0b03808d8
+
+Shell: [LIVE_HUB] peerId=62c6ce95-c6ac-4323-8858-650003c735ab email=live.hub.peer.1788179952516@example.com
+
+Shell: [LIVE_HUB] channelId=02bd316c-0f80-4065-9a27-f439e5462ac6
+
+Shell: [LIVE_HUB] connecting hub https://ultimatesolution-communication-backend.onrender.com/hubs/chat
+
+Shell: [LIVE_HUB] hub state=HubConnectionState.Connected
+
+Shell: [LIVE_HUB] subscribed to channel
+
+Shell: [LIVE_HUB] messageCreated raw args=[{id: ce407db0-405f-4d6c-b981-67be90335916, channelId: 02bd316c-0f80-4065-9a27-f439e5462ac6, senderUserId: 62c6ce95-c6ac-4323-8858-650003c735ab, body: LIVE_HUB_MARKER_1788179958828, createdAtUtc: 2026-08-31T12:39:17.7785204+00:00, editedAtUtc: null, deletedAtUtc: null}]
+
+Shell: [LIVE_HUB] peer sent messageId=ce407db0-405f-4d6c-b981-67be90335916 body=LIVE_HUB_MARKER_1788179958828
+
+Shell: [LIVE_HUB] received event={id: ce407db0-405f-4d6c-b981-67be90335916, channelId: 02bd316c-0f80-4065-9a27-f439e5462ac6, senderUserId: 62c6ce95-c6ac-4323-8858-650003c735ab, body: LIVE_HUB_MARKER_1788179958828, createdAtUtc: 2026-08-31T12:39:17.7785204+00:00, editedAtUtc: null, deletedAtUtc: null} in 496ms
+
+Shell: [LIVE_HUB] SUCCESS realtime delivery confirmed
+
+00:10 +1: All tests passed!
+```

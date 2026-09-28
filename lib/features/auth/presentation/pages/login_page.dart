@@ -33,6 +33,7 @@ final class _LoginPageState extends State<LoginPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Signed in successfully.')),
             );
+            context.go('/channels');
           }
         },
         builder: (context, state) {
